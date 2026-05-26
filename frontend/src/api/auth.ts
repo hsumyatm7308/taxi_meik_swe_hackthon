@@ -17,6 +17,16 @@ export const authApi = {
     return res.data.data
   },
 
+  registerRequest: async (data: any): Promise<{ success: boolean; tempToken: string }> => {
+    const res = await apiClient.post('/register-request', data)
+    return res.data
+  },
+
+  registerVerify: async (tempToken: string, code: string): Promise<{ success: boolean }> => {
+    const res = await apiClient.post('/register-verify', { tempToken, code })
+    return res.data
+  },
+
   logout: async (): Promise<void> => {
     await apiClient.post('/auth/logout')
   },

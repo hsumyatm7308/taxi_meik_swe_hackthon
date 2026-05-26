@@ -49,7 +49,7 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to={`/${user.role}`} replace />
+    return <Navigate to={`/${user.role.toLowerCase()}`} replace />
   }
 
   return <>{children}</>

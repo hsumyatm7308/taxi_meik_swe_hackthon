@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import type { User, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest } from '@/types'
 import { UserRole } from '@/types'
-import { authApi } from '@/api'
+import { authClient } from '@/lib/auth-client'
 
 interface AuthContextType {
   user: User | null
@@ -25,13 +25,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user && !!token
 
   const fetchUser = useCallback(async () => {
-    if (!token) {
-      setIsLoading(false)
-      return
-    }
     try {
-      const userData = await authApi.me()
-      setUser(userData)
+      const sessionRes = await authClient.getSession()
+      if (sessionRes && sessionRes.data?.user) {
+        const u = sessionRes.data.user as unknown as User
+        setUser(u)
+        setToken('session')
+        localStorage.setItem('token', 'session')
+        localStorage.setItem('user', JSON.stringify(u))
+      } else {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setToken(null)
+        setUser(null)
+      }
     } catch {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
@@ -40,39 +47,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [token])
+  }, [])
 
   useEffect(() => {
     fetchUser()
   }, [fetchUser])
 
   const login = useCallback(async (data: LoginRequest) => {
-    const res = await authApi.login(data)
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    setToken(res.token)
-    setUser(res.user)
+    const res = await authClient.signIn.email({
+      email: data.email,
+      password: data.password,
+    })
+
+    if (res.error) {
+      throw new Error(res.error.message || "Invalid credentials")
+    }
+
+    const sessionRes = await authClient.getSession()
+    if (sessionRes && sessionRes.data?.user) {
+      const u = sessionRes.data.user as unknown as User
+      setUser(u)
+      setToken('session')
+      localStorage.setItem('token', 'session')
+      localStorage.setItem('user', JSON.stringify(u))
+    }
   }, [])
 
   const registerOwner = useCallback(async (data: RegisterOwnerRequest) => {
-    const res = await authApi.registerOwner(data)
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    setToken(res.token)
-    setUser(res.user)
+    // Handled custom multi-step registration in the UI
   }, [])
 
   const registerDriver = useCallback(async (data: RegisterDriverRequest) => {
-    const res = await authApi.registerDriver(data)
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    setToken(res.token)
-    setUser(res.user)
+    // Handled custom multi-step registration in the UI
   }, [])
 
   const logout = useCallback(async () => {
     try {
-      await authApi.logout()
+      await authClient.signOut()
     } catch {
       // ignore
     }

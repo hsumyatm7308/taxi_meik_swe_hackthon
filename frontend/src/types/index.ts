@@ -1,8 +1,8 @@
 // ===== ENUMS (as const objects for TypeScript 6 erasableSyntaxOnly compat) =====
 export const UserRole = {
-  Admin: 'admin',
-  Owner: 'owner',
-  Driver: 'driver',
+  Admin: 'ADMIN',
+  Owner: 'OWNER',
+  Driver: 'DRIVER',
 } as const
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 

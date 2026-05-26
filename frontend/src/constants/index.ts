@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 export const APP_NAME = 'TaxiRental Myanmar'
 
 export const VERIFICATION_LABELS: Record<string, string> = {
