@@ -1,0 +1,323 @@
+// Prisma schema for Taxi Meik SWE
+// Car rental marketplace connecting taxi car owners with drivers in Myanmar
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  DRIVER
+  ADMIN
+}
+
+enum CarStatus {
+  AVAILABLE
+  RENTED
+  UNDER_INSPECTION
+  MAINTENANCE
+  INACTIVE
+}
+
+enum RentalStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum DepositStatus {
+  HELD
+  REFUNDED
+  FORFEITED
+  PARTIAL_REFUND
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentType {
+  RENTAL_FEE
+  DEPOSIT
+  DEPOSIT_REFUND
+  PENALTY
+}
+
+enum InspectionType {
+  PRE_RENTAL
+  POST_RENTAL
+}
+
+enum InspectionStatus {
+  PENDING
+  IN_PROGRESS
+  PASSED
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─────────────────────────────────────────────
+// USER & IDENTITY
+// ─────────────────────────────────────────────
+
+model User {
+  id                 String             @id @default(cuid())
+  email              String             @unique
+  phone              String             @unique
+  passwordHash       String
+  name               String
+  role               Role
+  profilePhoto       String?
+  nrcNumber          String?            @unique
+  nrcDocumentUrl     String?
+  isVerified         Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  cars            Car[]
+  driverRentals   Rental[]       @relation("DriverRentals")
+  ownerRentals    Rental[]       @relation("OwnerRentals")
+  payments        Payment[]
+  disputes        Dispute[]      @relation("DisputeRaisedBy")
+  adminDisputes   Dispute[]      @relation("DisputeAdmin")
+  driverLicense   DriverLicense?
+  reviewsGiven    Review[]       @relation("ReviewsGiven")
+  reviewsReceived Review[]       @relation("ReviewsReceived")
+
+  @@map("users")
+}
+
+model DriverLicense {
+  id            String             @id @default(cuid())
+  userId        String             @unique
+  licenseNumber String             @unique
+  licenseClass  String
+  expiryDate    DateTime
+  documentUrl   String
+  status        VerificationStatus @default(PENDING)
+  verifiedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("driver_licenses")
+}
+
+// ─────────────────────────────────────────────
+// CAR
+// ─────────────────────────────────────────────
+
+model Car {
+  id                 String             @id @default(cuid())
+  ownerId            String
+  make               String
+  model              String
+  year               Int
+  color              String
+  licensePlate       String             @unique
+  chassisNumber      String             @unique
+  engineNumber       String             @unique
+  registrationUrl    String
+  photos             String[]
+  description        String?
+  dailyRate          Decimal            @db.Decimal(12, 2)
+  weeklyRate         Decimal?           @db.Decimal(12, 2)
+  monthlyRate        Decimal?           @db.Decimal(12, 2)
+  depositAmount      Decimal            @db.Decimal(12, 2)
+  status             CarStatus          @default(AVAILABLE)
+  isVerified         Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  location           String?
+  latitude           Decimal?           @db.Decimal(10, 7)
+  longitude          Decimal?           @db.Decimal(10, 7)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  rentals     Rental[]
+  inspections Inspection[]
+  reviews     Review[]
+
+  @@map("cars")
+}
+
+// ─────────────────────────────────────────────
+// RENTAL
+// ─────────────────────────────────────────────
+
+model Rental {
+  id            String       @id @default(cuid())
+  carId         String
+  driverId      String
+  ownerId       String
+  startDate     DateTime
+  endDate       DateTime?
+  actualEndDate DateTime?
+  totalAmount   Decimal?     @db.Decimal(12, 2)
+  status        RentalStatus @default(PENDING)
+  termsAccepted Boolean      @default(false)
+  notes         String?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  car         Car          @relation(fields: [carId], references: [id], onDelete: Restrict)
+  driver      User         @relation("DriverRentals", fields: [driverId], references: [id], onDelete: Restrict)
+  owner       User         @relation("OwnerRentals", fields: [ownerId], references: [id], onDelete: Restrict)
+  deposit     Deposit?
+  payments    Payment[]
+  inspections Inspection[]
+  disputes    Dispute[]
+
+  @@map("rentals")
+}
+
+// ─────────────────────────────────────────────
+// DEPOSIT
+// ─────────────────────────────────────────────
+
+model Deposit {
+  id           String        @id @default(cuid())
+  rentalId     String        @unique
+  amount       Decimal       @db.Decimal(12, 2)
+  status       DepositStatus @default(HELD)
+  refundAmount Decimal?      @db.Decimal(12, 2)
+  refundReason String?
+  refundedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  rental Rental @relation(fields: [rentalId], references: [id], onDelete: Restrict)
+
+  @@map("deposits")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENT
+// ─────────────────────────────────────────────
+
+model Payment {
+  id             String        @id @default(cuid())
+  rentalId       String
+  userId         String
+  amount         Decimal       @db.Decimal(12, 2)
+  type           PaymentType
+  status         PaymentStatus @default(PENDING)
+  transactionRef String?       @unique
+  paymentMethod  String?
+  paidAt         DateTime?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  rental Rental @relation(fields: [rentalId], references: [id], onDelete: Restrict)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// INSPECTION
+// ─────────────────────────────────────────────
+
+model Inspection {
+  id             String           @id @default(cuid())
+  rentalId       String
+  carId          String
+  type           InspectionType
+  status         InspectionStatus @default(PENDING)
+  inspectorNotes String?
+  photos         String[]
+  mileage        Int?
+  fuelLevel      String?
+  damageFound    Boolean          @default(false)
+  damageDetails  String?
+  damagePhotos   String[]
+  conductedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  rental Rental @relation(fields: [rentalId], references: [id], onDelete: Restrict)
+  car    Car    @relation(fields: [carId], references: [id], onDelete: Restrict)
+
+  @@map("inspections")
+}
+
+// ─────────────────────────────────────────────
+// DISPUTE
+// ─────────────────────────────────────────────
+
+model Dispute {
+  id          String        @id @default(cuid())
+  rentalId    String
+  raisedById  String
+  adminId     String?
+  title       String
+  description String
+  status      DisputeStatus @default(OPEN)
+  resolution  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  rental     Rental  @relation(fields: [rentalId], references: [id], onDelete: Restrict)
+  raisedBy   User    @relation("DisputeRaisedBy", fields: [raisedById], references: [id], onDelete: Restrict)
+  admin      User?   @relation("DisputeAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@map("disputes")
+}
+
+// ─────────────────────────────────────────────
+// REVIEW
+// ─────────────────────────────────────────────
+
+model Review {
+  id         String   @id @default(cuid())
+  reviewerId String
+  revieweeId String
+  carId      String?
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  reviewer User  @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Restrict)
+  reviewee User  @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Restrict)
+  car      Car?  @relation(fields: [carId], references: [id], onDelete: SetNull)
+
+  @@map("reviews")
+}
