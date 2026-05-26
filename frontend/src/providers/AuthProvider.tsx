@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { User, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest } from '@/types'
 import { UserRole } from '@/types'
 import { authClient } from '@/lib/auth-client'
+import { authApi } from '@/api'
 
 interface AuthContextType {
   user: User | null
@@ -54,8 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUser])
 
   const login = useCallback(async (data: LoginRequest) => {
+    let email = data.email
+
+    if (!email && data.phone) {
+      const emailRes = await authApi.getEmailByPhone(data.phone)
+      email = emailRes.email
+    }
+
+    if (!email) {
+      throw new Error("Email or Phone number is required to sign in")
+    }
+
     const res = await authClient.signIn.email({
-      email: data.email,
+      email,
       password: data.password,
     })
 

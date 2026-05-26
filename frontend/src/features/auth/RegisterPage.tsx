@@ -922,6 +922,9 @@ export function RegisterPage() {
       if (response.success) {
         setTempToken(response.tempToken);
         setShowOtpModal(true);
+        if (response.code) {
+          console.log(`\n========================================\n[TESTING ONLY] OTP Code: ${response.code}\n========================================\n`);
+        }
         addToast("Verification code sent to your phone!", "info");
       }
     } catch (err: any) {

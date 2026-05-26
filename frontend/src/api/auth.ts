@@ -17,13 +17,18 @@ export const authApi = {
     return res.data.data
   },
 
-  registerRequest: async (data: any): Promise<{ success: boolean; tempToken: string }> => {
+  registerRequest: async (data: any): Promise<{ success: boolean; tempToken: string; code?: string }> => {
     const res = await apiClient.post('/register-request', data)
     return res.data
   },
 
   registerVerify: async (tempToken: string, code: string): Promise<{ success: boolean }> => {
     const res = await apiClient.post('/register-verify', { tempToken, code })
+    return res.data
+  },
+
+  getEmailByPhone: async (phone: string): Promise<{ email: string }> => {
+    const res = await apiClient.get(`/get-email-by-phone?phone=${phone}`)
     return res.data
   },
 

@@ -78,6 +78,7 @@ app.post("/api/register-request", async (req, res) => {
     });
 
     // Log to console (replace with real SMS in production)
+    console.log("OTP Code:", otpCode);
     console.log(`\n╔═══════════════════════════╗`);
     console.log(`║    REGISTER OTP SENT      ║`);
     console.log(`╠═══════════════════════════╣`);
@@ -85,7 +86,7 @@ app.post("/api/register-request", async (req, res) => {
     console.log(`║ Code:  ${otpCode.padEnd(18)}║`);
     console.log(`╚═══════════════════════════╝\n`);
 
-    return res.json({ success: true, message: "OTP sent successfully", tempToken });
+    return res.json({ success: true, message: "OTP sent successfully", tempToken, code: otpCode });
 
   } catch (error: any) {
     console.error("Register request error:", error);
@@ -180,6 +181,26 @@ app.post("/api/register-verify", async (req, res) => {
   } catch (error: any) {
     console.error("Register verification error:", error);
     return res.status(500).json({ error: error.message || "Internal server error" });
+  }
+});
+
+// Get email by phone number (used to sign in via Better Auth using phone input)
+app.get("/api/get-email-by-phone", async (req, res) => {
+  try {
+    const phone = req.query.phone;
+    if (!phone || typeof phone !== "string") {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+    const user = await prisma.user.findUnique({
+      where: { phone },
+      select: { email: true }
+    });
+    if (!user) {
+      return res.status(404).json({ error: "No account found with this phone number" });
+    }
+    return res.json({ email: user.email });
+  } catch (error: any) {
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

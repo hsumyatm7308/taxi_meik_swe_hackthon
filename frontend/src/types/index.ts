@@ -371,7 +371,8 @@ export interface Notification {
 
 // ===== AUTH TYPES =====
 export interface LoginRequest {
-  phone: string
+  phone?: string
+  email?: string
   password: string
 }
 
