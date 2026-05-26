@@ -12,33 +12,28 @@ export function LandingPage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary-dark to-blue-900 text-white">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary-dark to-blue-900 text-white min-h-screen flex items-center">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-96 h-96 bg-white rounded-full blur-3xl" />
           <div className="absolute bottom-10 right-10 w-[500px] h-[500px] bg-white rounded-full blur-3xl" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 lg:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 lg:py-32 w-full">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl"
+            className="max-w-3xl mx-auto text-center"
           >
             <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-6">
               Myanmar's Trusted<br />
               <span className="text-secondary">Taxi Rental</span> Platform
             </h1>
-            <p className="text-lg md:text-xl text-white/80 mb-8 max-w-xl">
+            <p className="text-lg md:text-xl text-white/80 mb-8 max-w-xl mx-auto">
               Connect car owners with verified taxi drivers. Safe, reliable rentals with full deposit protection and dispute resolution.
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap justify-center gap-4">
               <Link to="/register">
-                <Button size="lg" className="bg-secondary text-black hover:bg-secondary/90 shadow-lg">
+                <Button size="lg" className="bg-secondary text-white hover:bg-secondary/90 shadow-lg">
                   Get Started <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-              <Link to="/cars">
-                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                  Browse Cars
                 </Button>
               </Link>
             </div>
@@ -97,7 +92,7 @@ export function LandingPage() {
       </section>
 
       {/* For Owners */}
-      <section className="py-20 bg-muted/50">
+      {/* <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div {...fadeUp}>
@@ -131,10 +126,10 @@ export function LandingPage() {
             </motion.div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* For Drivers */}
-      <section className="py-20">
+      {/* <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div {...fadeUp} className="order-2 md:order-1 bg-gradient-to-br from-amber/5 to-amber/10 rounded-2xl p-8 border">
@@ -168,10 +163,10 @@ export function LandingPage() {
             </motion.div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Features */}
-      <section className="py-20 bg-muted/50">
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div {...fadeUp} className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-3">Why Choose TaxiRental Myanmar?</h2>
@@ -210,12 +205,12 @@ export function LandingPage() {
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Link to="/register?role=owner">
-                <Button size="lg" className="bg-secondary text-black hover:bg-secondary/90 shadow-lg">
+                <Button size="lg" className="bg-secondary text-white hover:bg-secondary/90 shadow-lg">
                   Register as Owner
                 </Button>
               </Link>
               <Link to="/register?role=driver">
-                <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="border-white/20 text-black hover:bg-white/10 hover:text-white shadow-lg">
                   Register as Driver
                 </Button>
               </Link>

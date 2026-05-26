@@ -53,7 +53,7 @@ export function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t bg-muted/50">
+      <footer className="border-t bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
@@ -70,7 +70,6 @@ export function PublicLayout() {
             <div>
               <h4 className="font-semibold mb-3">Quick Links</h4>
               <div className="space-y-2 text-sm text-muted-foreground">
-                <Link to="/cars" className="block hover:text-foreground">Browse Cars</Link>
                 <Link to="/about" className="block hover:text-foreground">About Us</Link>
                 <Link to="/contact" className="block hover:text-foreground">Contact</Link>
               </div>
