@@ -1,30 +1,58 @@
 import { z } from 'zod'
 
+const phoneSchema = z
+  .string()
+  .min(9, 'Phone number must be between 9 and 12 digits')
+  .max(12, 'Phone number must be between 9 and 12 digits')
+  .regex(/^\d+$/, 'Phone number must contain numbers only')
+
+const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .regex(/^(?=.*\d)(?=.*[^A-Za-z0-9]).+$/, 'Password must include a number and a special character')
+
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  phone: phoneSchema,
+  password: passwordSchema,
 })
 
-export const registerOwnerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+const registerOwnerBaseSchema = z.object({
+  name: z.string().min(2, 'Full name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  phone: z.string().min(7, 'Invalid phone number'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  phone: phoneSchema,
+  password: passwordSchema,
   password_confirmation: z.string(),
   nrc_number: z.string().min(5, 'Invalid NRC number'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
   city: z.string().min(1, 'City is required'),
   township: z.string().min(1, 'Township is required'),
-}).refine((data) => data.password === data.password_confirmation, {
+})
+
+export const registerOwnerStepOneSchema = registerOwnerBaseSchema.pick({
+  name: true,
+  email: true,
+  phone: true,
+  password: true,
+  password_confirmation: true,
+})
+
+export const registerOwnerStepTwoSchema = registerOwnerBaseSchema.pick({
+  nrc_number: true,
+  address: true,
+  city: true,
+  township: true,
+})
+
+export const registerOwnerSchema = registerOwnerBaseSchema.refine((data) => data.password === data.password_confirmation, {
   message: 'Passwords do not match',
   path: ['password_confirmation'],
 })
 
-export const registerDriverSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+const registerDriverBaseSchema = z.object({
+  name: z.string().min(2, 'Full name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  phone: z.string().min(7, 'Invalid phone number'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  phone: phoneSchema,
+  password: passwordSchema,
   password_confirmation: z.string(),
   nrc_number: z.string().min(5, 'Invalid NRC number'),
   address: z.string().min(5, 'Address must be at least 5 characters'),
@@ -33,7 +61,27 @@ export const registerDriverSchema = z.object({
   license_number: z.string().min(3, 'Invalid license number'),
   license_expiry: z.string().min(1, 'License expiry is required'),
   years_experience: z.number().min(0, 'Invalid experience'),
-}).refine((data) => data.password === data.password_confirmation, {
+})
+
+export const registerDriverStepOneSchema = registerDriverBaseSchema.pick({
+  name: true,
+  email: true,
+  phone: true,
+  password: true,
+  password_confirmation: true,
+})
+
+export const registerDriverStepTwoSchema = registerDriverBaseSchema.pick({
+  nrc_number: true,
+  address: true,
+  city: true,
+  township: true,
+  license_number: true,
+  license_expiry: true,
+  years_experience: true,
+})
+
+export const registerDriverSchema = registerDriverBaseSchema.refine((data) => data.password === data.password_confirmation, {
   message: 'Passwords do not match',
   path: ['password_confirmation'],
 })

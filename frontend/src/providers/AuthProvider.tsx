@@ -1,7 +1,13 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react'
 import type { User, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest } from '@/types'
 import { UserRole } from '@/types'
-import { authApi } from '@/api'
 
 interface AuthContextType {
   user: User | null
@@ -15,76 +21,208 @@ interface AuthContextType {
   updateUser: (user: User) => void
 }
 
+interface DemoAccount {
+  phone: string
+  password: string
+  user: User
+}
+
+const AUTH_TOKEN_KEY = 'token'
+const AUTH_USER_KEY = 'user'
+const DEMO_ACCOUNTS_KEY = 'demo-accounts'
+
+const nowIso = () => new Date().toISOString()
+
+const createUser = (data: {
+  name: string
+  email: string
+  phone: string
+  role: UserRole
+}): User => ({
+  id: Date.now() + Math.floor(Math.random() * 1000),
+  name: data.name,
+  email: data.email,
+  phone: data.phone,
+  role: data.role,
+  email_verified_at: null,
+  verification_status: 'pending',
+  suspension_reason: null,
+  profile_photo_url: null,
+  created_at: nowIso(),
+  updated_at: nowIso(),
+})
+
+const seedDemoAccounts = (): DemoAccount[] => [
+  {
+    phone: '0912345678',
+    password: 'Demo@1234',
+    user: createUser({
+      name: 'Demo Owner',
+      email: 'owner@demo.local',
+      phone: '0912345678',
+      role: UserRole.Owner,
+    }),
+  },
+  {
+    phone: '0923456789',
+    password: 'Demo@1234',
+    user: createUser({
+      name: 'Demo Driver',
+      email: 'driver@demo.local',
+      phone: '0923456789',
+      role: UserRole.Driver,
+    }),
+  },
+]
+
+const readDemoAccounts = (): DemoAccount[] => {
+  const raw = localStorage.getItem(DEMO_ACCOUNTS_KEY)
+  if (!raw) {
+    const seed = seedDemoAccounts()
+    localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(seed))
+    return seed
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as DemoAccount[]
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed
+    }
+  } catch {
+    // fall through to reseed
+  }
+
+  const seed = seedDemoAccounts()
+  localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(seed))
+  return seed
+}
+
+const writeDemoAccounts = (accounts: DemoAccount[]) => {
+  localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(accounts))
+}
+
+const setSession = (user: User) => {
+  const token = `demo-${user.role}-${user.id}`
+  localStorage.setItem(AUTH_TOKEN_KEY, token)
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+  return token
+}
+
+const clearSession = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem(AUTH_USER_KEY)
+}
+
+const buildOwnerUser = (data: RegisterOwnerRequest): User =>
+  createUser({
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    role: UserRole.Owner,
+  })
+
+const buildDriverUser = (data: RegisterDriverRequest): User =>
+  createUser({
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    role: UserRole.Driver,
+  })
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem(AUTH_USER_KEY)
+    if (!storedUser) {
+      return null
+    }
+
+    try {
+      return JSON.parse(storedUser) as User
+    } catch {
+      return null
+    }
+  })
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(AUTH_TOKEN_KEY))
+  const [isLoading] = useState(false)
 
   const isAuthenticated = !!user && !!token
 
-  const fetchUser = useCallback(async () => {
-    if (!token) {
-      setIsLoading(false)
+  const login = useCallback(async (data: LoginRequest) => {
+    const accounts = readDemoAccounts()
+    const matchedAccount = accounts.find(
+      (account) => account.phone === data.phone && account.password === data.password,
+    )
+
+    if (matchedAccount) {
+      const nextToken = setSession(matchedAccount.user)
+      setToken(nextToken)
+      setUser(matchedAccount.user)
       return
     }
-    try {
-      const userData = await authApi.me()
-      setUser(userData)
-    } catch {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      setToken(null)
-      setUser(null)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [token])
 
-  useEffect(() => {
-    fetchUser()
-  }, [fetchUser])
+    const fallbackUser = createUser({
+      name: 'Demo User',
+      email: 'demo@demo.local',
+      phone: data.phone,
+      role: UserRole.Owner,
+    })
+    const nextToken = setSession(fallbackUser)
+    setToken(nextToken)
+    setUser(fallbackUser)
 
-  const login = useCallback(async (data: LoginRequest) => {
-    const res = await authApi.login(data)
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    setToken(res.token)
-    setUser(res.user)
+    writeDemoAccounts([
+      ...accounts,
+      {
+        phone: data.phone,
+        password: data.password,
+        user: fallbackUser,
+      },
+    ])
   }, [])
 
   const registerOwner = useCallback(async (data: RegisterOwnerRequest) => {
-    const res = await authApi.registerOwner(data)
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    setToken(res.token)
-    setUser(res.user)
+    const userData = buildOwnerUser(data)
+    const accounts = readDemoAccounts()
+    writeDemoAccounts([
+      ...accounts.filter((account) => account.phone !== data.phone),
+      {
+        phone: data.phone,
+        password: data.password,
+        user: userData,
+      },
+    ])
+    const nextToken = setSession(userData)
+    setToken(nextToken)
+    setUser(userData)
   }, [])
 
   const registerDriver = useCallback(async (data: RegisterDriverRequest) => {
-    const res = await authApi.registerDriver(data)
-    localStorage.setItem('token', res.token)
-    localStorage.setItem('user', JSON.stringify(res.user))
-    setToken(res.token)
-    setUser(res.user)
+    const userData = buildDriverUser(data)
+    const accounts = readDemoAccounts()
+    writeDemoAccounts([
+      ...accounts.filter((account) => account.phone !== data.phone),
+      {
+        phone: data.phone,
+        password: data.password,
+        user: userData,
+      },
+    ])
+    const nextToken = setSession(userData)
+    setToken(nextToken)
+    setUser(userData)
   }, [])
 
   const logout = useCallback(async () => {
-    try {
-      await authApi.logout()
-    } catch {
-      // ignore
-    }
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearSession()
     setToken(null)
     setUser(null)
   }, [])
 
   const updateUser = useCallback((updatedUser: User) => {
     setUser(updatedUser)
-    localStorage.setItem('user', JSON.stringify(updatedUser))
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser))
   }, [])
 
   return (
