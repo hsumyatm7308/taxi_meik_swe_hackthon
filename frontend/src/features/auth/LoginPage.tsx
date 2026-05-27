@@ -37,12 +37,24 @@ export function LoginPage() {
     },
   });
 
-  const onSubmit = async (_data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     try {
-      await login(_data);
+      await login(data);
       addToast("Welcome back!", "success");
-      navigate(`/owner`, { replace: true });
+      
+      const savedUserStr = localStorage.getItem('user');
+      const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      const role = savedUser?.role;
+      if (role === 'DRIVER') {
+        navigate(`/driver`, { replace: true });
+      } else if (role === 'ADMIN') {
+        navigate(`/admin`, { replace: true });
+      } else {
+        navigate(`/owner`, { replace: true });
+      }
+    } catch (err: any) {
+      addToast(err.response?.data?.error || err.message || "Login failed", "error");
     } finally {
       setLoading(false);
     }

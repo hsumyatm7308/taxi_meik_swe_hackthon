@@ -1,37 +1,96 @@
 import apiClient from './client'
 import type { AuthResponse, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest, User } from '@/types'
+import { authClient } from '@/lib/auth-client'
 
 export const authApi = {
-  login: async (_data: LoginRequest): Promise<AuthResponse> => {
-    throw new Error('Backend under maintenance. Login is disabled.')
+  login: async (data: LoginRequest): Promise<AuthResponse> => {
+    if (!data.phone) {
+      throw new Error('Phone number is required')
+    }
+    // Get the email associated with this phone number
+    const { email } = await authApi.getEmailByPhone(data.phone)
+    
+    // Sign in using Better Auth
+    const response = await authClient.signIn.email({
+      email,
+      password: data.password,
+    })
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Login failed')
+    }
+
+    if (!response.data?.user) {
+      throw new Error('User data not found after login')
+    }
+
+    const baUser = response.data.user as any
+    const mappedUser: User = {
+      id: baUser.id as any,
+      name: baUser.name,
+      email: baUser.email,
+      phone: baUser.phone || '',
+      role: baUser.role as any,
+      email_verified_at: baUser.emailVerified ? new Date().toISOString() : null,
+      verification_status: baUser.verificationStatus as any || 'unverified',
+      suspension_reason: null,
+      profile_photo_url: baUser.image || null,
+      created_at: baUser.createdAt ? new Date(baUser.createdAt).toISOString() : new Date().toISOString(),
+      updated_at: baUser.updatedAt ? new Date(baUser.updatedAt).toISOString() : new Date().toISOString(),
+    }
+
+    return {
+      user: mappedUser,
+      token: (response.data as any).session?.token || 'session-token',
+    }
   },
 
-  registerOwner: async (_data: RegisterOwnerRequest): Promise<AuthResponse> => {
-    throw new Error('Backend under maintenance. Registration is disabled.')
+  registerOwner: async (data: RegisterOwnerRequest): Promise<AuthResponse> => {
+    throw new Error('Use registerRequest and registerVerify flow instead.')
   },
 
-  registerDriver: async (_data: RegisterDriverRequest): Promise<AuthResponse> => {
-    throw new Error('Backend under maintenance. Registration is disabled.')
+  registerDriver: async (data: RegisterDriverRequest): Promise<AuthResponse> => {
+    throw new Error('Use registerRequest and registerVerify flow instead.')
   },
 
-  registerRequest: async (_data: any): Promise<{ success: boolean; tempToken: string; code?: string }> => {
-    throw new Error('Backend under maintenance. Registration is disabled.')
+  registerRequest: async (data: any): Promise<{ success: boolean; tempToken: string; code?: string }> => {
+    const response = await apiClient.post('/register-request', data)
+    return response.data
   },
 
-  registerVerify: async (_tempToken: string, _code: string): Promise<{ success: boolean }> => {
-    throw new Error('Backend under maintenance. Registration is disabled.')
+  registerVerify: async (tempToken: string, code: string): Promise<{ success: boolean }> => {
+    const response = await apiClient.post('/register-verify', { tempToken, code })
+    return response.data
   },
 
-  getEmailByPhone: async (_phone: string): Promise<{ email: string }> => {
-    throw new Error('Backend under maintenance. Login is disabled.')
+  getEmailByPhone: async (phone: string): Promise<{ email: string }> => {
+    const response = await apiClient.get('/get-email-by-phone', { params: { phone } })
+    return response.data
   },
 
   logout: async (): Promise<void> => {
-    // no-op during maintenance
+    await authClient.signOut()
   },
 
   me: async (): Promise<User> => {
-    throw new Error('Backend under maintenance.')
+    const response = await authClient.getSession()
+    if (response.error || !response.data?.user) {
+      throw new Error('Not authenticated')
+    }
+    const baUser = response.data.user as any
+    return {
+      id: baUser.id as any,
+      name: baUser.name,
+      email: baUser.email,
+      phone: baUser.phone || '',
+      role: baUser.role as any,
+      email_verified_at: baUser.emailVerified ? new Date().toISOString() : null,
+      verification_status: baUser.verificationStatus as any || 'unverified',
+      suspension_reason: null,
+      profile_photo_url: baUser.image || null,
+      created_at: baUser.createdAt ? new Date(baUser.createdAt).toISOString() : new Date().toISOString(),
+      updated_at: baUser.updatedAt ? new Date(baUser.updatedAt).toISOString() : new Date().toISOString(),
+    }
   },
 
   forgotPassword: async (_email: string): Promise<void> => {

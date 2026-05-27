@@ -1,23 +1,7 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { User, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest } from '@/types'
 import { UserRole } from '@/types'
-
-// import { authClient } from '@/lib/auth-client'
-// import { authApi } from '@/api'
-
-const MOCK_USER: User = {
-  id: 1,
-  name: 'Demo Owner',
-  email: 'dev@taximeik.com',
-  phone: '0912345678',
-  role: UserRole.Owner,
-  email_verified_at: new Date().toISOString(),
-  verification_status: 'unverified',
-  suspension_reason: null,
-  profile_photo_url: null,
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}
+import { authApi } from '@/api'
 
 interface AuthContextType {
   user: User | null
@@ -34,17 +18,51 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(MOCK_USER)
-  const [token, setToken] = useState<string | null>('mock-token')
-  const [isLoading] = useState(false)
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('user')
+    try {
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('token')
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
   const isAuthenticated = !!user && !!token
 
-  const login = useCallback(async (_data: LoginRequest) => {
-    setUser(MOCK_USER)
-    setToken('mock-token')
-    localStorage.setItem('token', 'mock-token')
-    localStorage.setItem('user', JSON.stringify(MOCK_USER))
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const currentUser = await authApi.me()
+        setUser(currentUser)
+        setToken(localStorage.getItem('token') || 'session-token')
+        localStorage.setItem('user', JSON.stringify(currentUser))
+      } catch (err) {
+        setUser(null)
+        setToken(null)
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    checkSession()
+  }, [])
+
+  const login = useCallback(async (data: LoginRequest) => {
+    setIsLoading(true)
+    try {
+      const response = await authApi.login(data)
+      setUser(response.user)
+      setToken(response.token)
+      localStorage.setItem('token', response.token)
+      localStorage.setItem('user', JSON.stringify(response.user))
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
   const registerOwner = useCallback(async (_data: RegisterOwnerRequest) => {
@@ -54,10 +72,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setToken(null)
-    setUser(null)
+    setIsLoading(true)
+    try {
+      await authApi.logout()
+    } catch (err) {
+      console.error('Logout error:', err)
+    } finally {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      setToken(null)
+      setUser(null)
+      setIsLoading(false)
+    }
   }, [])
 
   const updateUser = useCallback((updatedUser: User) => {

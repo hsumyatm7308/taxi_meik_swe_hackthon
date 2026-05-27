@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,7 +46,8 @@ import { useAuth, useToast } from "@/providers";
 import { MYANMAR_CITIES } from "@/constants";
 import { cn } from "@/lib/utils";
 import Logo from "@/assets/Logo.svg";
-// import { authApi } from "@/api";
+import { authApi } from "@/api";
+import { OtpInput, ResendTimer } from "./otp";
 
 type Role = "owner" | "driver";
 type Step = 1 | 2;
@@ -911,26 +912,53 @@ export function RegisterPage() {
   const [otpCode, setOtpCode] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [savedFormData, setSavedFormData] = useState<any>(null);
+  const [devOtpCode, setDevOtpCode] = useState<string | null>(null);
 
-  const handleRegister = async (_data: any) => {
-    // const response = await authApi.registerRequest({
-    //   ...data,
-    //   role: role.toUpperCase(),
-    // });
-    // if (response.success) {
-    //   setTempToken(response.tempToken);
-    //   setShowOtpModal(true);
-    //   if (response.code) {
-    //     console.log(`\n========================================\n[TESTING ONLY] OTP Code: ${response.code}\n========================================\n`);
-    //   }
-    //   addToast("Verification code sent to your phone!", "info");
-    // }
+  const handleRegister = async (data: any) => {
+    try {
+      setSavedFormData(data);
+      const response = await authApi.registerRequest({
+        ...data,
+        role: role.toUpperCase(),
+      });
+      if (response.success) {
+        setTempToken(response.tempToken);
+        setShowOtpModal(true);
+        if (response.code) {
+          console.log(`\n========================================\n[TESTING ONLY] OTP Code: ${response.code}\n========================================\n`);
+          setDevOtpCode(response.code);
+        } else {
+          setDevOtpCode(null);
+        }
+        addToast("Verification code sent to your phone!", "info");
+      }
+    } catch (err: any) {
+      addToast(err.response?.data?.error || err.message || "Registration failed", "error");
+    }
   };
 
-  const handleVerifyOtp = async (_e: React.FormEvent) => {
-    // e.preventDefault();
-    // if (!tempToken || otpCode.length !== 6) return;
-    // try { ... } catch { ... } finally { ... }
+  const handleVerifyOtp = async (e?: React.FormEvent, codeOverride?: string) => {
+    if (e) e.preventDefault();
+    const finalCode = codeOverride || otpCode;
+    if (!tempToken || finalCode.length !== 6) return;
+    setOtpLoading(true);
+    try {
+      const response = await authApi.registerVerify(tempToken, finalCode);
+      if (response.success) {
+        addToast("Verification successful! Logging in...", "success");
+        // Log in the user using the credentials from savedFormData
+        await login({
+          phone: savedFormData.phone,
+          password: savedFormData.password,
+        });
+        setShowOtpModal(false);
+        navigate(role === "driver" ? "/driver" : "/owner", { replace: true });
+      }
+    } catch (err: any) {
+      addToast(err.response?.data?.error || err.message || "Verification failed", "error");
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
   return (
@@ -984,26 +1012,29 @@ export function RegisterPage() {
               </p>
             </div>
             
-            <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="otp" className="text-white/80">Verification Code</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  maxLength={6}
-                  placeholder="Enter 6-digit code"
-                  className="text-center text-2xl tracking-[0.5em] font-semibold py-6 bg-white/10 border-white/20 text-white placeholder:text-white/30 focus-visible:ring-white/40"
+            <form onSubmit={(e) => handleVerifyOtp(e)} className="mt-6 space-y-6">
+              <div className="space-y-3">
+                <Label className="text-white/80 block text-center text-sm font-medium tracking-wide">
+                  Verification Code
+                </Label>
+                <OtpInput
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                  autoFocus
+                  onChange={setOtpCode}
+                  disabled={otpLoading}
+                  onComplete={(code) => handleVerifyOtp(undefined, code)}
                 />
               </div>
 
-              <div className="flex gap-3 mt-6">
+              <ResendTimer
+                onResend={() => handleRegister(savedFormData)}
+                loading={otpLoading}
+              />
+
+              <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="flex-1 border-white/20 text-white bg-transparent hover:bg-white/10"
+                  className="flex-1 border-white/20 text-white bg-transparent hover:bg-white/10 rounded-xl py-5"
                   onClick={() => setShowOtpModal(false)}
                   disabled={otpLoading}
                 >
@@ -1011,12 +1042,34 @@ export function RegisterPage() {
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 font-semibold bg-white text-slate-950 hover:bg-slate-100"
+                  className="flex-1 font-semibold bg-white text-slate-950 hover:bg-slate-100 rounded-xl py-5 shadow-lg"
                   disabled={otpCode.length !== 6 || otpLoading}
                 >
                   {otpLoading ? 'Verifying...' : 'Verify & Sign In'}
                 </Button>
               </div>
+
+              {import.meta.env.DEV && devOtpCode && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-3 bg-sky-950/40 border border-sky-400/20 rounded-xl text-center space-y-2 backdrop-blur-md"
+                >
+                  <p className="text-xs text-sky-300">
+                    [DEV ONLY] Generated OTP: <span className="font-mono font-bold text-sm bg-sky-400/20 px-2 py-0.5 rounded text-white">{devOtpCode}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpCode(devOtpCode);
+                      handleVerifyOtp(undefined, devOtpCode);
+                    }}
+                    className="text-xs text-sky-200 hover:text-white underline font-semibold transition"
+                  >
+                    Quick Autofill & Verify
+                  </button>
+                </motion.div>
+              )}
             </form>
           </motion.div>
         </div>
