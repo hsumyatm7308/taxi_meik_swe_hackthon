@@ -12,6 +12,23 @@ export const usersApi = {
     return res.data.data
   },
 
+  updateDriverUserProfile: async (data: any): Promise<User> => {
+    const res = await apiClient.put('/driver/profile', data)
+    return res.data.data
+  },
+
+  uploadKycDocuments: async (formData: FormData): Promise<any> => {
+    const res = await apiClient.post('/driver/kyc/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data.data
+  },
+
+  getKycStatus: async (): Promise<any> => {
+    const res = await apiClient.get('/driver/kyc')
+    return res.data.data
+  },
+
   getOwnerProfile: async (): Promise<OwnerProfile> => {
     const res = await apiClient.get('/owner/profile')
     return res.data.data

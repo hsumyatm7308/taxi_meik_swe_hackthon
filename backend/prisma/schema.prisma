@@ -125,7 +125,15 @@ model DriverProfile {
   nrcText            String @map("nrc_text")
   nrcFrontImage      String @map("nrc_front_image")
   nrcBackImage       String @map("nrc_back_image")
-  driverLicenseImage String @map("driver_license_image")
+  driverLicenseImage String? @map("driver_license_image")
+
+  nrcFrontUrl        String?            @map("nrc_front_url")
+  nrcBackUrl         String?            @map("nrc_back_url")
+  selfieUrl          String?            @map("selfie_url")
+  drivingLicenseUrl  String?            @map("driving_license_url")
+  drivingLicenseFrontUrl String?        @map("driving_license_front_url")
+  drivingLicenseBackUrl  String?        @map("driving_license_back_url")
+  kycStatus          String             @default("PENDING") @map("kyc_status")
 
   adminApprovalStatus ApprovalStatus @default(PENDING) @map("admin_approval_status")
   approvedAt          DateTime?      @map("approved_at")

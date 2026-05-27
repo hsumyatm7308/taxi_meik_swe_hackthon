@@ -1,10 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { toNodeHandler } from 'better-auth/node';
 import { auth } from './lib/auth.js';
 import prisma from './lib/prisma.js';
 import crypto from 'crypto';
+import driverRouter from '../routes/driverRoutes.js';
+import adminRouter from '../routes/admin/apiRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -19,6 +26,9 @@ app.use(cors({
 
 // JSON parser for our custom routes
 app.use(express.json());
+
+// Serve uploaded KYC documents as static files
+app.use('/uploads/kyc', express.static(path.resolve(__dirname, '../uploads/kyc')));
 
 // ─── Temporary in-memory store for pending registrations ──────────────────────
 interface PendingRegistration {
@@ -203,6 +213,12 @@ app.get("/api/get-email-by-phone", async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// Mount driver routes
+app.use("/api/driver", driverRouter);
+
+// Mount admin routes
+app.use("/api/admin", adminRouter);
 
 // ─── Better Auth Route Handler (catch-all — must come LAST) ───────────────────
 app.all("/api/auth/*splat", toNodeHandler(auth));
