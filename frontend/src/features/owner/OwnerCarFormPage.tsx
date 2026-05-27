@@ -10,11 +10,20 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { carSchema, type CarFormData } from '@/utils/validation'
+import { KYCLock } from '@/components/shared/KYCLock'
 import { carsApi } from '@/api'
 import { useToast } from '@/providers'
 import { MYANMAR_CITIES, FUEL_OPTIONS, CAR_TYPE_OPTIONS } from '@/constants'
 
 export function OwnerCarFormPage() {
+  return (
+    <KYCLock feature="Post Car">
+      <OwnerCarFormContent />
+    </KYCLock>
+  )
+}
+
+function OwnerCarFormContent() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { addToast } = useToast()

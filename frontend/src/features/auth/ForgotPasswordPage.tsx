@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { passwordResetSchema } from '@/utils/validation'
-import { authApi } from '@/api'
+// import { authApi } from '@/api'
 import { useToast } from '@/providers'
 
 export function ForgotPasswordPage() {
@@ -21,17 +21,17 @@ export function ForgotPasswordPage() {
     resolver: zodResolver(passwordResetSchema),
   })
 
-  const onSubmit = async (data: { email: string }) => {
-    try {
-      setLoading(true)
-      await authApi.forgotPassword(data.email)
-      setSent(true)
-      addToast('Password reset link sent to your email', 'success')
-    } catch (err: any) {
-      addToast(err.response?.data?.message || 'Failed to send reset link', 'error')
-    } finally {
-      setLoading(false)
-    }
+  const onSubmit = async (_data: { email: string }) => {
+    // try {
+    //   setLoading(true)
+    //   await authApi.forgotPassword(data.email)
+    //   setSent(true)
+    //   addToast('Password reset link sent to your email', 'success')
+    // } catch (err: any) {
+    //   addToast(err.response?.data?.message || 'Failed to send reset link', 'error')
+    // } finally {
+    //   setLoading(false)
+    // }
   }
 
   return (

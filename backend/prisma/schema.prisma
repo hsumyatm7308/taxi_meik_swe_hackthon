@@ -10,71 +10,57 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
-
 enum Role {
-  OWNER
   DRIVER
+  OWNER
   ADMIN
 }
 
-enum CarStatus {
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FREEZE
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  EV
+}
+
+enum RentalPaymentType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum RentalType {
+  DRIVER_HOME
+  OWNER_HOME
+}
+
+enum CarAvailabilityStatus {
   AVAILABLE
   RENTED
-  UNDER_INSPECTION
-  MAINTENANCE
-  INACTIVE
+  UNAVAILABLE
 }
 
 enum RentalStatus {
-  PENDING
-  APPROVED
   ACTIVE
   COMPLETED
   CANCELLED
-  DISPUTED
 }
 
-enum DepositStatus {
-  HELD
-  REFUNDED
-  FORFEITED
-  PARTIAL_REFUND
+enum OTPPurpose {
+  REGISTER
+  LOGIN
+  PASSWORD_RESET
 }
 
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-}
-
-enum PaymentType {
-  RENTAL_FEE
-  DEPOSIT
-  DEPOSIT_REFUND
-  PENALTY
-}
-
-enum InspectionType {
-  PRE_RENTAL
-  POST_RENTAL
-}
-
-enum InspectionStatus {
-  PENDING
-  IN_PROGRESS
-  PASSED
-  FAILED
-}
-
-enum DisputeStatus {
-  OPEN
-  UNDER_REVIEW
-  RESOLVED
-  CLOSED
+enum ReviewDirection {
+  OWNER_TO_DRIVER
+  DRIVER_TO_OWNER
 }
 
 enum VerificationStatus {
@@ -83,257 +69,322 @@ enum VerificationStatus {
   REJECTED
 }
 
-// ─────────────────────────────────────────────
-// USER & IDENTITY
-// ─────────────────────────────────────────────
-
 model User {
-  id                 String             @id @default(cuid())
-  email              String             @unique
-  phone              String?            @unique
-  passwordHash       String?
-  name               String
-  role               Role
-  profilePhoto       String?
-  nrcNumber          String?            @unique
-  nrcDocumentUrl     String?
-  isVerified         Boolean            @default(false)
-  verificationStatus VerificationStatus @default(PENDING)
-  isActive           Boolean            @default(true)
-  city               String?
-  township           String?
-  address            String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  emailVerified      Boolean            @default(false)
-  image              String?
-  phoneNumberVerified Boolean           @default(false)
+  id                  String             @id @default(uuid()) @db.Uuid
+  email               String             @unique
+  phone               String?            @unique
+  passwordHash        String?            @map("password_hash")
+  name                String             @map("full_name")
+  role                Role
+  profilePhoto        String?            @map("profile_photo")
+  nrcNumber           String?            @unique @map("nrc_number")
+  nrcDocumentUrl      String?            @map("nrc_document_url")
+  isVerified          Boolean            @default(false) @map("is_verified")
+  verificationStatus  VerificationStatus @default(PENDING) @map("verification_status")
+  isActive            Boolean            @default(true) @map("is_active")
+  city                String?
+  township            String?
+  address             String?
+  emailVerified       Boolean            @default(false) @map("email_verified")
+  image               String?
+  phoneNumberVerified Boolean            @default(false) @map("phone_number_verified")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
 
-  // Relations
-  cars            Car[]
-  driverRentals   Rental[]       @relation("DriverRentals")
-  ownerRentals    Rental[]       @relation("OwnerRentals")
-  payments        Payment[]
-  disputes        Dispute[]      @relation("DisputeRaisedBy")
-  adminDisputes   Dispute[]      @relation("DisputeAdmin")
-  driverLicense   DriverLicense?
-  reviewsGiven    Review[]       @relation("ReviewsGiven")
-  reviewsReceived Review[]       @relation("ReviewsReceived")
-  sessions        Session[]
-  accounts        Account[]
+  driverProfile DriverProfile?
+  ownerProfile  OwnerProfile?
+  driverLicense DriverLicense?
+
+  ownedCars Car[] @relation("OwnerCars")
+
+  driverApplications CarApplication[] @relation("DriverApplications")
+  ownerApplications  CarApplication[] @relation("OwnerApplications")
+
+  driverRentals CarRental[] @relation("DriverRentals")
+  ownerRentals  CarRental[] @relation("OwnerRentals")
+
+  notificationsReceived  Notification[] @relation("NotificationReceiver")
+  notificationsTriggered Notification[] @relation("NotificationTrigger")
+
+  sentReviews     Review[] @relation("Reviewer")
+  receivedReviews Review[] @relation("ReviewTarget")
+
+  otpCodes       OTPCode[]
+  trustedDevices TrustedDevice[]
+  sessions       Session[]
+  accounts       Account[]
 
   @@map("users")
 }
 
+model DriverProfile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @map("user_id") @db.Uuid
+
+  address            String?
+  nrcText            String @map("nrc_text")
+  nrcFrontImage      String @map("nrc_front_image")
+  nrcBackImage       String @map("nrc_back_image")
+  driverLicenseImage String @map("driver_license_image")
+
+  adminApprovalStatus ApprovalStatus @default(PENDING) @map("admin_approval_status")
+  approvedAt          DateTime?      @map("approved_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("driver_profiles")
+}
+
+model OwnerProfile {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @unique @map("user_id") @db.Uuid
+
+  address       String?
+  nrcText       String @map("nrc_text")
+  nrcFrontImage String @map("nrc_front_image")
+  nrcBackImage  String @map("nrc_back_image")
+
+  adminApprovalStatus ApprovalStatus @default(PENDING) @map("admin_approval_status")
+  approvedAt          DateTime?      @map("approved_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("owner_profiles")
+}
+
 model DriverLicense {
-  id              String             @id @default(cuid())
-  userId          String             @unique
-  licenseNumber   String             @unique
-  licenseClass    String
-  expiryDate      DateTime
-  documentUrl     String
-  yearsExperience Int?
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String             @unique @map("user_id") @db.Uuid
+  licenseNumber   String             @unique @map("license_number")
+  licenseClass    String             @map("license_class")
+  expiryDate      DateTime           @map("expiry_date")
+  documentUrl     String             @map("document_url")
+  yearsExperience Int?               @map("years_experience")
   status          VerificationStatus @default(PENDING)
-  verifiedAt      DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  verifiedAt      DateTime?          @map("verified_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("driver_licenses")
 }
 
-// ─────────────────────────────────────────────
-// CAR
-// ─────────────────────────────────────────────
-
 model Car {
-  id                 String             @id @default(cuid())
-  ownerId            String
-  make               String
-  model              String
-  year               Int
-  color              String
-  licensePlate       String             @unique
-  chassisNumber      String             @unique
-  engineNumber       String             @unique
-  registrationUrl    String
-  photos             String[]
-  description        String?
-  dailyRate          Decimal            @db.Decimal(12, 2)
-  weeklyRate         Decimal?           @db.Decimal(12, 2)
-  monthlyRate        Decimal?           @db.Decimal(12, 2)
-  depositAmount      Decimal            @db.Decimal(12, 2)
-  status             CarStatus          @default(AVAILABLE)
-  isVerified         Boolean            @default(false)
-  verificationStatus VerificationStatus @default(PENDING)
-  location           String?
-  latitude           Decimal?           @db.Decimal(10, 7)
-  longitude          Decimal?           @db.Decimal(10, 7)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id      String @id @default(uuid()) @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
 
-  // Relations
-  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
-  rentals     Rental[]
-  inspections Inspection[]
-  reviews     Review[]
+  color  String?
+  rating Float   @default(0)
 
+  year  Int?
+  brand String
+  model String
+
+  licenseNumber String @unique @map("license_number")
+
+  fuelType FuelType @map("fuel_type")
+
+  ownerBook String @map("owner_book")
+
+  rentalPeriod      String?           @map("rental_period")
+  rentalPaymentType RentalPaymentType @map("rental_payment_type")
+  rentalType        RentalType        @map("rental_type")
+
+  rentalPrice   Decimal @db.Decimal(12, 2) @map("rental_price")
+  depositAmount Decimal @default(0) @db.Decimal(12, 2) @map("deposit_amount")
+
+  availabilityStatus CarAvailabilityStatus @default(AVAILABLE) @map("availability_status")
+
+  adminApprovalStatus ApprovalStatus @default(PENDING) @map("admin_approval_status")
+  approvedAt          DateTime?      @map("approved_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner User @relation("OwnerCars", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  carImages    CarImage?
+  applications CarApplication[]
+  rentals      CarRental[]
+  reviews      Review[]
+
+  @@index([ownerId])
   @@map("cars")
 }
 
-// ─────────────────────────────────────────────
-// RENTAL
-// ─────────────────────────────────────────────
+model CarImage {
+  id    String @id @default(uuid()) @db.Uuid
+  carId String @unique @map("car_id") @db.Uuid
 
-model Rental {
-  id            String       @id @default(cuid())
-  carId         String
-  driverId      String
-  ownerId       String
-  startDate     DateTime
-  endDate       DateTime?
-  actualEndDate DateTime?
-  totalAmount   Decimal?     @db.Decimal(12, 2)
-  status        RentalStatus @default(PENDING)
-  termsAccepted Boolean      @default(false)
-  notes         String?
-  cancelledAt   DateTime?
-  cancelReason  String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  frontImage String @map("front_image")
+  backImage  String @map("back_image")
+  leftImage  String @map("left_image")
+  rightImage String @map("right_image")
 
-  // Relations
-  car         Car          @relation(fields: [carId], references: [id], onDelete: Restrict)
-  driver      User         @relation("DriverRentals", fields: [driverId], references: [id], onDelete: Restrict)
-  owner       User         @relation("OwnerRentals", fields: [ownerId], references: [id], onDelete: Restrict)
-  deposit     Deposit?
-  payments    Payment[]
-  inspections Inspection[]
-  disputes    Dispute[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("rentals")
+  car Car @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@map("car_images")
 }
 
-// ─────────────────────────────────────────────
-// DEPOSIT
-// ─────────────────────────────────────────────
+model CarApplication {
+  id String @id @default(uuid()) @db.Uuid
 
-model Deposit {
-  id           String        @id @default(cuid())
-  rentalId     String        @unique
-  amount       Decimal       @db.Decimal(12, 2)
-  status       DepositStatus @default(HELD)
-  refundAmount Decimal?      @db.Decimal(12, 2)
-  refundReason String?
-  refundedAt   DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  ownerId  String @map("owner_id") @db.Uuid
+  carId    String @map("car_id") @db.Uuid
+  driverId String @map("driver_id") @db.Uuid
 
-  rental Rental @relation(fields: [rentalId], references: [id], onDelete: Restrict)
+  wardRecommendationLetter String? @map("ward_recommendation_letter")
 
-  @@map("deposits")
+  ownerApprovalStatus ApprovalStatus @default(PENDING) @map("owner_approval_status")
+
+  approvedAt DateTime? @map("approved_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner  User @relation("OwnerApplications", fields: [ownerId], references: [id], onDelete: Cascade)
+  driver User @relation("DriverApplications", fields: [driverId], references: [id], onDelete: Cascade)
+
+  car    Car        @relation(fields: [carId], references: [id], onDelete: Cascade)
+  rental CarRental?
+
+  @@unique([carId, driverId])
+  @@index([driverId])
+  @@index([ownerId])
+  @@map("car_applications")
 }
 
-// ─────────────────────────────────────────────
-// PAYMENT
-// ─────────────────────────────────────────────
+model CarRental {
+  id String @id @default(uuid()) @db.Uuid
 
-model Payment {
-  id             String        @id @default(cuid())
-  rentalId       String
-  userId         String
-  amount         Decimal       @db.Decimal(12, 2)
-  type           PaymentType
-  status         PaymentStatus @default(PENDING)
-  transactionRef String?       @unique
-  paymentMethod  String?
-  paidAt         DateTime?
-  notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  carApplicationId String @unique @map("car_application_id") @db.Uuid
 
-  rental Rental @relation(fields: [rentalId], references: [id], onDelete: Restrict)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  carId    String @map("car_id") @db.Uuid
+  ownerId  String @map("owner_id") @db.Uuid
+  driverId String @map("driver_id") @db.Uuid
 
-  @@map("payments")
+  rentalStartDate DateTime @map("rental_start_date")
+  rentalEndDate   DateTime @map("rental_end_date")
+
+  status RentalStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  application CarApplication @relation(fields: [carApplicationId], references: [id], onDelete: Cascade)
+
+  car     Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  owner   User     @relation("OwnerRentals", fields: [ownerId], references: [id], onDelete: Cascade)
+  driver  User     @relation("DriverRentals", fields: [driverId], references: [id], onDelete: Cascade)
+  reviews Review[]
+
+  @@index([driverId])
+  @@index([carId])
+  @@map("car_rentals")
 }
 
-// ─────────────────────────────────────────────
-// INSPECTION
-// ─────────────────────────────────────────────
+model OTPCode {
+  id String @id @default(uuid()) @db.Uuid
 
-model Inspection {
-  id             String           @id @default(cuid())
-  rentalId       String
-  carId          String
-  type           InspectionType
-  status         InspectionStatus @default(PENDING)
-  inspectorNotes String?
-  photos         String[]
-  mileage        Int?
-  fuelLevel      String?
-  damageFound    Boolean          @default(false)
-  damageDetails  String?
-  damagePhotos   String[]
-  conductedAt    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  userId   String?    @map("user_id") @db.Uuid
+  phone    String
+  code     String
+  purpose  OTPPurpose @default(LOGIN)
+  attempts Int        @default(0)
 
-  rental Rental @relation(fields: [rentalId], references: [id], onDelete: Restrict)
-  car    Car    @relation(fields: [carId], references: [id], onDelete: Restrict)
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
 
-  @@map("inspections")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone, purpose])
+  @@index([userId])
+  @@map("otp_codes")
 }
 
-// ─────────────────────────────────────────────
-// DISPUTE
-// ─────────────────────────────────────────────
+model TrustedDevice {
+  id String @id @default(uuid()) @db.Uuid
 
-model Dispute {
-  id          String        @id @default(cuid())
-  rentalId    String
-  raisedById  String
-  adminId     String?
-  title       String
-  description String
-  status      DisputeStatus @default(OPEN)
-  resolution  String?
-  resolvedAt  DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  userId       String    @map("user_id") @db.Uuid
+  deviceId     String    @map("device_id")
+  userAgent    String?   @map("user_agent")
+  ipAddress    String?   @map("ip_address")
+  verifiedAt   DateTime  @default(now()) @map("verified_at")
+  lastSeenAt   DateTime  @default(now()) @map("last_seen_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  rental     Rental  @relation(fields: [rentalId], references: [id], onDelete: Restrict)
-  raisedBy   User    @relation("DisputeRaisedBy", fields: [raisedById], references: [id], onDelete: Restrict)
-  admin      User?   @relation("DisputeAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("disputes")
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@map("trusted_devices")
 }
-
-// ─────────────────────────────────────────────
-// REVIEW
-// ─────────────────────────────────────────────
 
 model Review {
-  id         String   @id @default(cuid())
-  reviewerId String
-  revieweeId String
-  carId      String?
-  rating     Int
-  comment    String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id String @id @default(uuid()) @db.Uuid
 
-  reviewer User  @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Restrict)
-  reviewee User  @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Restrict)
-  car      Car?  @relation(fields: [carId], references: [id], onDelete: SetNull)
+  carRentalId  String          @map("car_rental_id") @db.Uuid
+  reviewerId   String          @map("reviewer_id") @db.Uuid
+  targetUserId String          @map("target_user_id") @db.Uuid
+  carId        String?         @map("car_id") @db.Uuid
+  direction    ReviewDirection
 
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  rental     CarRental @relation(fields: [carRentalId], references: [id], onDelete: Cascade)
+  reviewer   User      @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  targetUser User      @relation("ReviewTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  car Car? @relation(fields: [carId], references: [id], onDelete: SetNull)
+
+  @@unique([carRentalId, direction])
+  @@index([targetUserId])
+  @@index([reviewerId])
   @@map("reviews")
 }
 
-// ─────────────────────────────────────────────
-// BETTER AUTH MODELS
-// ─────────────────────────────────────────────
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+
+  receiverId    String  @map("receiver_id") @db.Uuid
+  triggerUserId String? @map("trigger_user_id") @db.Uuid
+
+  title   String
+  message String
+
+  type     String?
+  entityId String? @map("entity_id") @db.Uuid
+
+  isRead Boolean @default(false) @map("is_read")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  receiver    User  @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  triggerUser User? @relation("NotificationTrigger", fields: [triggerUserId], references: [id], onDelete: SetNull)
+
+  @@index([receiverId])
+  @@index([entityId])
+  @@map("notifications")
+}
 
 model Session {
   id        String   @id
@@ -343,7 +394,7 @@ model Session {
   updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
-  userId    String
+  userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
@@ -355,7 +406,7 @@ model Account {
   id                    String    @id
   accountId             String
   providerId            String
-  userId                String
+  userId                String    @db.Uuid
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?

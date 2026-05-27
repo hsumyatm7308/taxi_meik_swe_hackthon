@@ -46,7 +46,7 @@ import { useAuth, useToast } from "@/providers";
 import { MYANMAR_CITIES } from "@/constants";
 import { cn } from "@/lib/utils";
 import Logo from "@/assets/Logo.svg";
-import { authApi } from "@/api";
+// import { authApi } from "@/api";
 
 type Role = "owner" | "driver";
 type Step = 1 | 2;
@@ -912,51 +912,25 @@ export function RegisterPage() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [savedFormData, setSavedFormData] = useState<any>(null);
 
-  const handleRegister = async (data: any) => {
-    try {
-      setSavedFormData(data);
-      const response = await authApi.registerRequest({
-        ...data,
-        role: role.toUpperCase(),
-      });
-      if (response.success) {
-        setTempToken(response.tempToken);
-        setShowOtpModal(true);
-        if (response.code) {
-          console.log(`\n========================================\n[TESTING ONLY] OTP Code: ${response.code}\n========================================\n`);
-        }
-        addToast("Verification code sent to your phone!", "info");
-      }
-    } catch (err: any) {
-      addToast(err.response?.data?.error || "Registration failed", "error");
-      throw err;
-    }
+  const handleRegister = async (_data: any) => {
+    // const response = await authApi.registerRequest({
+    //   ...data,
+    //   role: role.toUpperCase(),
+    // });
+    // if (response.success) {
+    //   setTempToken(response.tempToken);
+    //   setShowOtpModal(true);
+    //   if (response.code) {
+    //     console.log(`\n========================================\n[TESTING ONLY] OTP Code: ${response.code}\n========================================\n`);
+    //   }
+    //   addToast("Verification code sent to your phone!", "info");
+    // }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tempToken || otpCode.length !== 6) return;
-
-    try {
-      setOtpLoading(true);
-      await authApi.registerVerify(tempToken, otpCode);
-      addToast("Verification successful! Logging in...", "success");
-      
-      await login({
-        email: savedFormData.email,
-        password: savedFormData.password,
-      });
-
-      addToast("Welcome to Taxi Meik!", "success");
-      navigate(`/${role}`, { replace: true });
-    } catch (err: any) {
-      addToast(
-        err.response?.data?.error || "Verification failed. Please check the code.",
-        "error",
-      );
-    } finally {
-      setOtpLoading(false);
-    }
+  const handleVerifyOtp = async (_e: React.FormEvent) => {
+    // e.preventDefault();
+    // if (!tempToken || otpCode.length !== 6) return;
+    // try { ... } catch { ... } finally { ... }
   };
 
   return (

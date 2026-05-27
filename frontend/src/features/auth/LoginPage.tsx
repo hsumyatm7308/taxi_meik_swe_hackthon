@@ -37,13 +37,12 @@ export function LoginPage() {
     },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (_data: LoginFormData) => {
     setLoading(true);
     try {
-      await login(data);
+      await login(_data);
       addToast("Welcome back!", "success");
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      navigate(`/${user.role}`, { replace: true });
+      navigate(`/owner`, { replace: true });
     } finally {
       setLoading(false);
     }

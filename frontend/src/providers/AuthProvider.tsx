@@ -1,8 +1,23 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import type { User, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest } from '@/types'
 import { UserRole } from '@/types'
-import { authClient } from '@/lib/auth-client'
-import { authApi } from '@/api'
+
+// import { authClient } from '@/lib/auth-client'
+// import { authApi } from '@/api'
+
+const MOCK_USER: User = {
+  id: 1,
+  name: 'Demo Owner',
+  email: 'dev@taximeik.com',
+  phone: '0912345678',
+  role: UserRole.Owner,
+  email_verified_at: new Date().toISOString(),
+  verification_status: 'unverified',
+  suspension_reason: null,
+  profile_photo_url: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}
 
 interface AuthContextType {
   user: User | null
@@ -19,86 +34,26 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(MOCK_USER)
+  const [token, setToken] = useState<string | null>('mock-token')
+  const [isLoading] = useState(false)
 
   const isAuthenticated = !!user && !!token
 
-  const fetchUser = useCallback(async () => {
-    try {
-      const sessionRes = await authClient.getSession()
-      if (sessionRes && sessionRes.data?.user) {
-        const u = sessionRes.data.user as unknown as User
-        setUser(u)
-        setToken('session')
-        localStorage.setItem('token', 'session')
-        localStorage.setItem('user', JSON.stringify(u))
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        setToken(null)
-        setUser(null)
-      }
-    } catch {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      setToken(null)
-      setUser(null)
-    } finally {
-      setIsLoading(false)
-    }
+  const login = useCallback(async (_data: LoginRequest) => {
+    setUser(MOCK_USER)
+    setToken('mock-token')
+    localStorage.setItem('token', 'mock-token')
+    localStorage.setItem('user', JSON.stringify(MOCK_USER))
   }, [])
 
-  useEffect(() => {
-    fetchUser()
-  }, [fetchUser])
-
-  const login = useCallback(async (data: LoginRequest) => {
-    let email = data.email
-
-    if (!email && data.phone) {
-      const emailRes = await authApi.getEmailByPhone(data.phone)
-      email = emailRes.email
-    }
-
-    if (!email) {
-      throw new Error("Email or Phone number is required to sign in")
-    }
-
-    const res = await authClient.signIn.email({
-      email,
-      password: data.password,
-    })
-
-    if (res.error) {
-      throw new Error(res.error.message || "Invalid credentials")
-    }
-
-    const sessionRes = await authClient.getSession()
-    if (sessionRes && sessionRes.data?.user) {
-      const u = sessionRes.data.user as unknown as User
-      setUser(u)
-      setToken('session')
-      localStorage.setItem('token', 'session')
-      localStorage.setItem('user', JSON.stringify(u))
-    }
+  const registerOwner = useCallback(async (_data: RegisterOwnerRequest) => {
   }, [])
 
-  const registerOwner = useCallback(async (data: RegisterOwnerRequest) => {
-    // Handled custom multi-step registration in the UI
-  }, [])
-
-  const registerDriver = useCallback(async (data: RegisterDriverRequest) => {
-    // Handled custom multi-step registration in the UI
+  const registerDriver = useCallback(async (_data: RegisterDriverRequest) => {
   }, [])
 
   const logout = useCallback(async () => {
-    try {
-      await authClient.signOut()
-    } catch {
-      // ignore
-    }
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setToken(null)

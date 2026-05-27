@@ -8,11 +8,20 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { KYCLock } from '@/components/shared/KYCLock'
 import { carsApi } from '@/api'
 import type { Car } from '@/types'
 import { formatCurrency } from '@/utils/format'
 
 export function OwnerCarsPage() {
+  return (
+    <KYCLock feature="My Post">
+      <OwnerCarsContent />
+    </KYCLock>
+  )
+}
+
+function OwnerCarsContent() {
   const navigate = useNavigate()
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,7 +72,7 @@ export function OwnerCarsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">My Cars</h1>
+          <h1 className="text-2xl font-bold">My Post</h1>
           <p className="text-muted-foreground">Manage your car listings</p>
         </div>
         <Link to="/owner/cars/new">

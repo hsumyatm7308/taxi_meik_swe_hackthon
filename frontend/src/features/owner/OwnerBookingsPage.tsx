@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { KYCLock } from '@/components/shared/KYCLock'
 import { bookingsApi } from '@/api'
 import { useToast } from '@/providers'
 import type { Booking } from '@/types'
@@ -15,6 +15,14 @@ import { formatDate, formatCurrency } from '@/utils/format'
 import { User, Calendar, DollarSign } from 'lucide-react'
 
 export function OwnerBookingsPage() {
+  return (
+    <KYCLock feature="Bookings">
+      <OwnerBookingsContent />
+    </KYCLock>
+  )
+}
+
+function OwnerBookingsContent() {
   const { addToast } = useToast()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)

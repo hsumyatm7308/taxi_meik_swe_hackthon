@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { newPasswordSchema } from '@/utils/validation'
-import { authApi } from '@/api'
+// import { authApi } from '@/api'
 import { useToast } from '@/providers'
 
 export function ResetPasswordPage() {
@@ -22,17 +22,17 @@ export function ResetPasswordPage() {
     defaultValues: { token: token || '', email: '', password: '', password_confirmation: '' },
   })
 
-  const onSubmit = async (data: any) => {
-    try {
-      setLoading(true)
-      await authApi.resetPassword(data)
-      addToast('Password reset successful!', 'success')
-      navigate('/login')
-    } catch (err: any) {
-      addToast(err.response?.data?.message || 'Reset failed', 'error')
-    } finally {
-      setLoading(false)
-    }
+  const onSubmit = async (_data: any) => {
+    // try {
+    //   setLoading(true)
+    //   await authApi.resetPassword(data)
+    //   addToast('Password reset successful!', 'success')
+    //   navigate('/login')
+    // } catch (err: any) {
+    //   addToast(err.response?.data?.message || 'Reset failed', 'error')
+    // } finally {
+    //   setLoading(false)
+    // }
   }
 
   return (

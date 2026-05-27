@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Car, CalendarCheck, DollarSign, Landmark,
-  Users, FileText, Shield, Bell, Star, AlertTriangle, ScrollText,
-  Menu, X, ChevronDown, Gauge, MessageSquare, PlusCircle,
+  LayoutDashboard, FileText, CalendarCheck, Car,
+  Users, Shield, Bell, ScrollText, DollarSign, Landmark,
+  AlertTriangle, Star, Menu, X, ChevronDown, Gauge,
+  PlusCircle, Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth, useRole } from '@/providers'
-import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { APP_NAME } from '@/constants'
 import { getInitials } from '@/utils/format'
@@ -16,19 +16,18 @@ interface NavItem {
   label: string
   icon: React.ReactNode
   path?: string
+  locked?: boolean
   children?: { label: string; path: string }[]
 }
 
-const ownerNav: NavItem[] = [
+const KYC_REQUIRED = ['verified', 'trusted']
+
+const ownerNav = (kycPassed: boolean): NavItem[] => [
   { label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, path: '/owner' },
-  { label: 'My Cars', icon: <Car className="w-4 h-4" />, path: '/owner/cars' },
-  { label: 'Add Car', icon: <PlusCircle className="w-4 h-4" />, path: '/owner/cars/new' },
-  { label: 'Bookings', icon: <CalendarCheck className="w-4 h-4" />, path: '/owner/bookings' },
-  { label: 'Earnings', icon: <DollarSign className="w-4 h-4" />, path: '/owner/earnings' },
-  { label: 'Deposits', icon: <Landmark className="w-4 h-4" />, path: '/owner/deposits' },
-  { label: 'Reviews', icon: <Star className="w-4 h-4" />, path: '/owner/reviews' },
-  { label: 'Disputes', icon: <AlertTriangle className="w-4 h-4" />, path: '/owner/disputes' },
-  { label: 'Documents', icon: <FileText className="w-4 h-4" />, path: '/owner/documents' },
+  { label: 'My Post', icon: <FileText className="w-4 h-4" />, path: '/owner/cars', locked: !kycPassed },
+  { label: 'Post Car', icon: <PlusCircle className="w-4 h-4" />, path: '/owner/cars/new', locked: !kycPassed },
+  { label: 'Bookings', icon: <CalendarCheck className="w-4 h-4" />, path: '/owner/bookings', locked: !kycPassed },
+  { label: 'KYC', icon: <Shield className="w-4 h-4" />, path: '/owner/documents' },
   { label: 'Profile', icon: <Users className="w-4 h-4" />, path: '/owner/profile' },
 ]
 
@@ -64,7 +63,8 @@ export function Sidebar() {
   const { user } = useAuth()
   const { isOwner, isDriver, isAdmin } = useRole()
 
-  const navItems = isAdmin ? adminNav : isOwner ? ownerNav : isDriver ? driverNav : []
+  const kycPassed = !!user && KYC_REQUIRED.includes(user.verification_status)
+  const navItems = isAdmin ? adminNav : isOwner ? ownerNav(kycPassed) : isDriver ? driverNav : []
 
   return (
     <>
@@ -103,15 +103,21 @@ export function Sidebar() {
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-                      isActive
+                      isActive && !item.locked
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      item.locked && 'opacity-50',
                       collapsed && 'justify-center px-2',
                     )
                   }
                 >
                   {item.icon}
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && (
+                    <>
+                      <span>{item.label}</span>
+                      {item.locked && <Lock className="w-3 h-3 ml-auto shrink-0" />}
+                    </>
+                  )}
                 </NavLink>
               ) : null
             ))}

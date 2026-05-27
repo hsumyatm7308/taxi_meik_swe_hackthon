@@ -2,58 +2,51 @@ import apiClient from './client'
 import type { AuthResponse, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest, User } from '@/types'
 
 export const authApi = {
-  login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const res = await apiClient.post('/auth/login', data)
-    return res.data.data
+  login: async (_data: LoginRequest): Promise<AuthResponse> => {
+    throw new Error('Backend under maintenance. Login is disabled.')
   },
 
-  registerOwner: async (data: RegisterOwnerRequest): Promise<AuthResponse> => {
-    const res = await apiClient.post('/auth/register/owner', data)
-    return res.data.data
+  registerOwner: async (_data: RegisterOwnerRequest): Promise<AuthResponse> => {
+    throw new Error('Backend under maintenance. Registration is disabled.')
   },
 
-  registerDriver: async (data: RegisterDriverRequest): Promise<AuthResponse> => {
-    const res = await apiClient.post('/auth/register/driver', data)
-    return res.data.data
+  registerDriver: async (_data: RegisterDriverRequest): Promise<AuthResponse> => {
+    throw new Error('Backend under maintenance. Registration is disabled.')
   },
 
-  registerRequest: async (data: any): Promise<{ success: boolean; tempToken: string; code?: string }> => {
-    const res = await apiClient.post('/register-request', data)
-    return res.data
+  registerRequest: async (_data: any): Promise<{ success: boolean; tempToken: string; code?: string }> => {
+    throw new Error('Backend under maintenance. Registration is disabled.')
   },
 
-  registerVerify: async (tempToken: string, code: string): Promise<{ success: boolean }> => {
-    const res = await apiClient.post('/register-verify', { tempToken, code })
-    return res.data
+  registerVerify: async (_tempToken: string, _code: string): Promise<{ success: boolean }> => {
+    throw new Error('Backend under maintenance. Registration is disabled.')
   },
 
-  getEmailByPhone: async (phone: string): Promise<{ email: string }> => {
-    const res = await apiClient.get(`/get-email-by-phone?phone=${phone}`)
-    return res.data
+  getEmailByPhone: async (_phone: string): Promise<{ email: string }> => {
+    throw new Error('Backend under maintenance. Login is disabled.')
   },
 
   logout: async (): Promise<void> => {
-    await apiClient.post('/auth/logout')
+    // no-op during maintenance
   },
 
   me: async (): Promise<User> => {
-    const res = await apiClient.get('/auth/me')
-    return res.data.data
+    throw new Error('Backend under maintenance.')
   },
 
-  forgotPassword: async (email: string): Promise<void> => {
-    await apiClient.post('/auth/forgot-password', { email })
+  forgotPassword: async (_email: string): Promise<void> => {
+    throw new Error('Backend under maintenance. Password reset is disabled.')
   },
 
-  resetPassword: async (data: { token: string; email: string; password: string; password_confirmation: string }): Promise<void> => {
-    await apiClient.post('/auth/reset-password', data)
+  resetPassword: async (_data: { token: string; email: string; password: string; password_confirmation: string }): Promise<void> => {
+    throw new Error('Backend under maintenance. Password reset is disabled.')
   },
 
-  verifyEmail: async (id: number, hash: string): Promise<void> => {
-    await apiClient.get(`/auth/email/verify/${id}/${hash}`)
+  verifyEmail: async (_id: number, _hash: string): Promise<void> => {
+    throw new Error('Backend under maintenance.')
   },
 
   resendVerification: async (): Promise<void> => {
-    await apiClient.post('/auth/email/resend')
+    throw new Error('Backend under maintenance.')
   },
 }
