@@ -36,6 +36,7 @@ import { OwnerProfilePage } from '@/features/owner/OwnerProfilePage'
 // Driver pages
 import { DriverDashboardPage } from '@/features/driver/DriverDashboardPage'
 import { DriverBrowseCarsPage } from '@/features/driver/DriverBrowseCarsPage'
+import { DriverCarDetailPage } from '@/features/driver/DriverCarDetailPage'
 import { DriverBookingsPage } from '@/features/driver/DriverBookingsPage'
 import { DriverBookingDetailPage } from '@/features/driver/DriverBookingDetailPage'
 import { DriverPaymentsPage } from '@/features/driver/DriverPaymentsPage'
@@ -115,6 +116,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DriverDashboardPage /> },
       { path: 'cars', element: <DriverBrowseCarsPage /> },
+      { path: 'cars/:id', element: <DriverCarDetailPage /> },
       { path: 'bookings', element: <DriverBookingsPage /> },
       { path: 'bookings/:id', element: <DriverBookingDetailPage /> },
       { path: 'payments', element: <DriverPaymentsPage /> },

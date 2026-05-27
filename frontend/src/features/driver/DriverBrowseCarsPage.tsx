@@ -1,103 +1,83 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CarCard } from '@/components/shared/CarCard'
-import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { carsApi } from '@/api'
-import type { Car } from '@/types'
-import { MYANMAR_CITIES, FUEL_OPTIONS, CAR_TYPE_OPTIONS } from '@/constants'
+import { MOCK_CARS } from '@/mock-data/driver'
+
+const PER_PAGE_DESKTOP = 12
+const PER_PAGE_MOBILE = 6
 
 export function DriverBrowseCarsPage() {
   const navigate = useNavigate()
-  const [cars, setCars] = useState<Car[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [city, setCity] = useState('')
-  const [carType, setCarType] = useState('')
-  const [fuelType, setFuelType] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
+  const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    loadCars()
-  }, [city, carType, fuelType])
+  const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth < 768, [])
+  const perPage = isMobile ? PER_PAGE_MOBILE : PER_PAGE_DESKTOP
 
-  const loadCars = async () => {
-    try {
-      setLoading(true)
-      const res = await carsApi.list({
-        verified_only: true,
-        city: city || undefined,
-        car_type: carType || undefined,
-        fuel_type: fuelType || undefined,
-        per_page: 20,
-      })
-      setCars(res.data)
-    } catch {
-      setCars([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    return MOCK_CARS.filter((c) => {
+      if (!q) return true
+      return c.brand.toLowerCase().includes(q) || c.model.toLowerCase().includes(q)
+    })
+  }, [search])
 
-  const filteredCars = cars.filter((car) => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return car.brand.toLowerCase().includes(q) || car.model.toLowerCase().includes(q) || car.location.toLowerCase().includes(q)
-  })
+  const totalPages = Math.ceil(filtered.length / perPage)
+  const paginated = filtered.slice((page - 1) * perPage, page * perPage)
 
-  const clearFilters = () => { setCity(''); setCarType(''); setFuelType('') }
-  const hasFilters = city || carType || fuelType
+  const handlePage = (p: number) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Browse Cars</h1>
-          <p className="text-muted-foreground">Find the perfect car for your next rental</p>
-        </div>
-        <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-          <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters {hasFilters && <span className="ml-1 w-2 h-2 rounded-full bg-primary" />}
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Browse Cars</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Find the perfect car for your next rental</p>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search by brand, model, or location..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Search by brand or model..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
       </div>
 
-      {showFilters && (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="flex flex-wrap gap-3 p-4 rounded-xl border bg-card">
-          <Select value={city} onValueChange={setCity}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="All Cities" /></SelectTrigger>
-            <SelectContent>{MYANMAR_CITIES.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
-          </Select>
-          <Select value={carType} onValueChange={setCarType}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Car Type" /></SelectTrigger>
-            <SelectContent>{CAR_TYPE_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-          </Select>
-          <Select value={fuelType} onValueChange={setFuelType}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Fuel Type" /></SelectTrigger>
-            <SelectContent>{FUEL_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
-          </Select>
-          {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="w-4 h-4 mr-1" />Clear</Button>}
-        </motion.div>
-      )}
-
-      {loading ? (
-        <LoadingSkeleton type="card" count={6} />
-      ) : filteredCars.length === 0 ? (
-        <EmptyState title="No cars found" description="Try adjusting your filters." />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCars.map((car) => (
-            <CarCard key={car.id} car={car} onView={(id) => navigate(`/cars/${id}`)} onBook={(id) => navigate(`/driver/bookings?car=${id}`)} />
-          ))}
+      {paginated.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground">
+          <p className="text-lg">No cars found</p>
+          <p className="text-sm">Try a different search term.</p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+            {paginated.map((car) => (
+              <CarCard
+                key={car.id}
+                car={car}
+                onView={(id) => navigate(`/driver/cars/${id}`)}
+                onBook={(id) => navigate(`/driver/bookings?car=${id}`)}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-4">
+              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => handlePage(page - 1)}>Previous</Button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <Button
+                  key={i}
+                  size="sm"
+                  variant={page === i + 1 ? 'default' : 'outline'}
+                  onClick={() => handlePage(i + 1)}
+                  className="min-w-[36px]"
+                >
+                  {i + 1}
+                </Button>
+              ))}
+              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => handlePage(page + 1)}>Next</Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

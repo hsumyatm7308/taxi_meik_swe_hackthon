@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/providers'
+import { useAuth, useRole } from '@/providers'
 import { ShieldAlert, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -12,10 +12,13 @@ const KYC_REQUIRED = ['verified', 'trusted']
 
 export function KYCLock({ children, feature }: KYCLockProps) {
   const { user } = useAuth()
+  const { isDriver } = useRole()
 
   if (user && KYC_REQUIRED.includes(user.verification_status)) {
     return <>{children}</>
   }
+
+  const kycPath = isDriver ? '/driver/documents' : '/owner/documents'
 
   return (
     <div className="relative">
@@ -27,7 +30,7 @@ export function KYCLock({ children, feature }: KYCLockProps) {
         <p className="text-sm text-muted-foreground max-w-xs mb-4">
           Please complete your identity verification to access {feature}.
         </p>
-        <Link to="/owner/documents">
+        <Link to={kycPath}>
           <Button>
             Go to KYC <ArrowRight className="w-4 h-4 ml-2" />
           </Button>

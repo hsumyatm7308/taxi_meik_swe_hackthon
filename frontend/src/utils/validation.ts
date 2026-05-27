@@ -34,6 +34,9 @@ export const registerOwnerStepOneSchema = registerOwnerBaseSchema.pick({
   phone: true,
   password: true,
   password_confirmation: true,
+}).refine((data) => data.password === data.password_confirmation, {
+  message: 'Passwords do not match',
+  path: ['password_confirmation'],
 })
 
 export const registerOwnerStepTwoSchema = registerOwnerBaseSchema.pick({
@@ -59,7 +62,6 @@ const registerDriverBaseSchema = z.object({
   city: z.string().min(1, 'City is required'),
   township: z.string().min(1, 'Township is required'),
   license_number: z.string().min(3, 'Invalid license number'),
-  license_expiry: z.string().min(1, 'License expiry is required'),
   years_experience: z.number().min(0, 'Invalid experience'),
 })
 
@@ -69,6 +71,9 @@ export const registerDriverStepOneSchema = registerDriverBaseSchema.pick({
   phone: true,
   password: true,
   password_confirmation: true,
+}).refine((data) => data.password === data.password_confirmation, {
+  message: 'Passwords do not match',
+  path: ['password_confirmation'],
 })
 
 export const registerDriverStepTwoSchema = registerDriverBaseSchema.pick({
@@ -77,7 +82,6 @@ export const registerDriverStepTwoSchema = registerDriverBaseSchema.pick({
   city: true,
   township: true,
   license_number: true,
-  license_expiry: true,
   years_experience: true,
 })
 
