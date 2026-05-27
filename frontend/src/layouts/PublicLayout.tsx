@@ -23,12 +23,6 @@ export function PublicLayout() {
 
           <nav className="hidden md:flex items-center gap-6">
             <Link
-              to="/cars"
-              className="text-sm text-white/70 hover:text-white transition-colors"
-            >
-              Browse Cars
-            </Link>
-            <Link
               to="/about"
               className="text-sm text-white/70 hover:text-white transition-colors"
             >

@@ -19,7 +19,7 @@ export function AboutPage() {
             Our platform is designed specifically for the Myanmar market, supporting local payment methods and understanding the unique needs of the local taxi industry.
           </p>
         </motion.div>
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-muted rounded-2xl p-8">
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-muted/20 rounded-2xl p-8">
           <div className="grid grid-cols-2 gap-4">
             {[
               { value: '2024', label: 'Founded' },
@@ -27,8 +27,8 @@ export function AboutPage() {
               { value: '1K+', label: 'Users' },
               { value: '50+', label: 'Cities' },
             ].map((s) => (
-              <div key={s.label} className="text-center p-4 bg-background rounded-lg">
-                <p className="text-2xl font-bold text-primary">{s.value}</p>
+              <div key={s.label} className="text-center p-4 bg-muted/20 rounded-lg">
+                <p className="text-2xl font-bold text-white">{s.value}</p>
                 <p className="text-sm text-muted-foreground">{s.label}</p>
               </div>
             ))}
@@ -42,7 +42,7 @@ export function AboutPage() {
           { icon: <Users className="w-6 h-6" />, title: 'Community First', desc: 'Built for the Myanmar taxi community with local needs in mind.' },
           { icon: <Heart className="w-6 h-6" />, title: 'Fair & Transparent', desc: 'Clear pricing, transparent processes, and fair dispute resolution.' },
         ].map((v) => (
-          <motion.div key={v.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-6 rounded-xl border bg-card text-center">
+          <motion.div key={v.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-6 rounded-xl bg-muted/20 text-center">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary">{v.icon}</div>
             <h3 className="font-semibold mb-2">{v.title}</h3>
             <p className="text-sm text-muted-foreground">{v.desc}</p>
