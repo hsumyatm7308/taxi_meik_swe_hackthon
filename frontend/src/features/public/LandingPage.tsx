@@ -32,11 +32,11 @@ export function LandingPage() {
           <div className="absolute right-[-6rem] top-1/3 h-80 w-80 rounded-full bg-cyan-400/15 blur-3xl" />
           <div className="absolute bottom-[-6rem] left-1/4 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 lg:py-32 w-full">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-24 w-full">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid items-center gap-10 lg:grid-cols-2"
+            className="grid items-center gap-6 lg:grid-cols-2"
           >
             <div className="text-center lg:text-left">
               <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-6">
@@ -73,7 +73,7 @@ export function LandingPage() {
               <img
                 src={LandingImage}
                 alt="Taxi car"
-                className="w-full max-w-xl object-contain drop-shadow-[0_20px_50px_rgba(2,132,199,0.35)]"
+                className="w-full max-w-lg object-contain drop-shadow-[0_20px_50px_rgba(2,132,199,0.35)]"
               />
             </div>
           </motion.div>
