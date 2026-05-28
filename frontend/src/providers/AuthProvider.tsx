@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(null)
       setUser(null)
       setIsLoading(false)
+      window.location.href = '/login'
     }
   }, [])
 
