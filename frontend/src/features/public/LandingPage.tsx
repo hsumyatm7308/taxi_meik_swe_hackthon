@@ -73,7 +73,7 @@ export function LandingPage() {
               <img
                 src={LandingImage}
                 alt="Taxi car"
-                className="w-full max-w-lg object-contain drop-shadow-[0_20px_50px_rgba(2,132,199,0.35)]"
+                className="w-full max-w-2xl object-contain drop-shadow-[0_20px_50px_rgba(2,132,199,0.35)]"
               />
             </div>
           </motion.div>
