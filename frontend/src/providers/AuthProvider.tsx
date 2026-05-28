@@ -22,15 +22,27 @@ const TOKEN_CACHE_KEY = 'auth_token_cache'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
-    const cached = sessionStorage.getItem(USER_CACHE_KEY)
-    if (!cached) return null
     try {
+      if (typeof window !== 'undefined' && localStorage.getItem('auth_logged_out')) {
+        return null
+      }
+      const cached = sessionStorage.getItem(USER_CACHE_KEY)
+      if (!cached) return null
       return JSON.parse(cached) as User
     } catch {
       return null
     }
   })
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_CACHE_KEY))
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      if (typeof window !== 'undefined' && localStorage.getItem('auth_logged_out')) {
+        return null
+      }
+      return sessionStorage.getItem(TOKEN_CACHE_KEY)
+    } catch {
+      return null
+    }
+  })
   const [isLoading, setIsLoading] = useState(true)
 
   const isAuthenticated = !!user && !!token
@@ -53,6 +65,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     checkSession()
+  }, [])
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'auth_logged_out') {
+        setUser(null)
+        setToken(null)
+        sessionStorage.removeItem(USER_CACHE_KEY)
+        sessionStorage.removeItem(TOKEN_CACHE_KEY)
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   const login = useCallback(async (data: LoginRequest) => {
@@ -87,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       sessionStorage.removeItem(USER_CACHE_KEY)
       sessionStorage.removeItem(TOKEN_CACHE_KEY)
+      try { localStorage.setItem('auth_logged_out', Date.now().toString()) } catch {}
       // keep skip_refresh until consumed by authApi.me to avoid immediate silent refresh
     }
   }, [])
