@@ -6,7 +6,7 @@ import {
   getEmailByPhone,
   loginWithCredentials,
   refreshCustomSession,
-  revokeCustomSessionByAccessToken,
+  revokeCustomSessionByAccessToken, revokeCustomSessionByRefreshToken,
   verifyRegistration,
 } from "../service/authService.js";
 
@@ -143,7 +143,11 @@ export async function refresh(req: Request, res: Response) {
 export async function logout(req: Request, res: Response) {
   try {
     const accessToken = getCookieValue(req.headers.cookie, "accessToken") || getCookieValue(req.headers.cookie, "session");
+    const refreshToken = getCookieValue(req.headers.cookie, "refreshToken");
+
+    // Revoke both access and refresh tokens server-side to ensure logout is effective
     await revokeCustomSessionByAccessToken(accessToken || "");
+    await revokeCustomSessionByRefreshToken(refreshToken || "");
 
     res.clearCookie("accessToken", getCookieOptions(0));
     res.clearCookie("refreshToken", getCookieOptions(0));

@@ -392,6 +392,26 @@ export async function revokeCustomSessionByAccessToken(accessToken: string) {
   }
 }
 
+export async function revokeCustomSessionByRefreshToken(refreshToken: string) {
+  if (!refreshToken) {
+    return;
+  }
+
+  const hashed = hashToken(refreshToken);
+  const account = await prisma.account.findFirst({
+    where: {
+      refreshToken: hashed,
+    },
+    select: {
+      userId: true,
+    },
+  });
+
+  if (account) {
+    await revokeCustomSession(account.userId);
+  }
+}
+
 export async function getCustomSession(accessToken?: string) {
   if (!accessToken) {
     throw new AuthServiceError("Unauthorized", 401);
