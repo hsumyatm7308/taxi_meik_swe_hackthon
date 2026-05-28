@@ -34,6 +34,9 @@ export const registerOwnerStepOneSchema = registerOwnerBaseSchema.pick({
   phone: true,
   password: true,
   password_confirmation: true,
+}).refine((data) => data.password === data.password_confirmation, {
+  message: 'Passwords do not match',
+  path: ['password_confirmation'],
 })
 
 export const registerOwnerStepTwoSchema = registerOwnerBaseSchema.pick({
@@ -69,6 +72,9 @@ export const registerDriverStepOneSchema = registerDriverBaseSchema.pick({
   phone: true,
   password: true,
   password_confirmation: true,
+}).refine((data) => data.password === data.password_confirmation, {
+  message: 'Passwords do not match',
+  path: ['password_confirmation'],
 })
 
 export const registerDriverStepTwoSchema = registerDriverBaseSchema.pick({
@@ -148,12 +154,40 @@ export const newPasswordSchema = z.object({
   path: ['password_confirmation'],
 })
 
-export const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().min(7, 'Invalid phone number'),
-  address: z.string().optional(),
-  bio: z.string().optional(),
-})
+export const profileSchema = z
+  .object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    phone: z.string().min(7, 'Invalid phone number'),
+    address: z.string().optional(),
+    bio: z.string().optional(),
+    password: z.string().optional().or(z.literal("")),
+    password_confirmation: z.string().optional().or(z.literal("")),
+  })
+  .refine(
+    (data) => {
+      if (data.password && data.password !== "") {
+        return data.password === data.password_confirmation;
+      }
+      return true;
+    },
+    {
+      message: "Passwords do not match",
+      path: ["password_confirmation"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.password && data.password !== "") {
+        const res = passwordSchema.safeParse(data.password);
+        return res.success;
+      }
+      return true;
+    },
+    {
+      message: "Password must be at least 8 characters and include a number and a special character",
+      path: ["password"],
+    }
+  );
 
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterOwnerFormData = z.infer<typeof registerOwnerSchema>

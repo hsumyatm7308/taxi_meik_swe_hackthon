@@ -52,9 +52,19 @@ export const adminApi = {
     return res.data.data
   },
 
-  // Driver verifications
-  getPendingDrivers: async (): Promise<User[]> => {
+  // Driver KYC verifications
+  getPendingDrivers: async (): Promise<any[]> => {
     const res = await apiClient.get('/admin/verifications/drivers')
+    return res.data.data
+  },
+
+  getKYCHistory: async (): Promise<any[]> => {
+    const res = await apiClient.get('/admin/verifications/drivers/history')
+    return res.data.data
+  },
+
+  reviewDriverKYC: async (driverProfileId: string, status: 'APPROVED' | 'REJECTED', rejectionReason?: string): Promise<any> => {
+    const res = await apiClient.put(`/admin/verifications/drivers/${driverProfileId}`, { status, rejectionReason })
     return res.data.data
   },
 

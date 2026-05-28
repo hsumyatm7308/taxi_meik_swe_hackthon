@@ -31,15 +31,11 @@ const ownerNav = (kycPassed: boolean): NavItem[] => [
   { label: 'Profile', icon: <Users className="w-4 h-4" />, path: '/owner/profile' },
 ]
 
-const driverNav: NavItem[] = [
+const driverNav = (kycPassed: boolean): NavItem[] => [
   { label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" />, path: '/driver' },
   { label: 'Browse Cars', icon: <Car className="w-4 h-4" />, path: '/driver/cars' },
-  { label: 'My Bookings', icon: <CalendarCheck className="w-4 h-4" />, path: '/driver/bookings' },
-  { label: 'Payments', icon: <DollarSign className="w-4 h-4" />, path: '/driver/payments' },
-  { label: 'Deposits', icon: <Landmark className="w-4 h-4" />, path: '/driver/deposits' },
-  { label: 'Documents', icon: <FileText className="w-4 h-4" />, path: '/driver/documents' },
-  { label: 'Disputes', icon: <AlertTriangle className="w-4 h-4" />, path: '/driver/disputes' },
-  { label: 'Reviews', icon: <Star className="w-4 h-4" />, path: '/driver/reviews' },
+  { label: 'My Booking', icon: <CalendarCheck className="w-4 h-4" />, path: '/driver/bookings', locked: !kycPassed },
+  { label: 'KYC', icon: <Shield className="w-4 h-4" />, path: '/driver/documents' },
   { label: 'Profile', icon: <Users className="w-4 h-4" />, path: '/driver/profile' },
 ]
 
@@ -64,7 +60,7 @@ export function Sidebar() {
   const { isOwner, isDriver, isAdmin } = useRole()
 
   const kycPassed = !!user && KYC_REQUIRED.includes(user.verification_status)
-  const navItems = isAdmin ? adminNav : isOwner ? ownerNav(kycPassed) : isDriver ? driverNav : []
+  const navItems = isAdmin ? adminNav : isOwner ? ownerNav(kycPassed) : isDriver ? driverNav(kycPassed) : []
 
   return (
     <>
