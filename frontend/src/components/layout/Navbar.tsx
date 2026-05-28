@@ -1,4 +1,5 @@
 import { useAuth } from '@/providers'
+import { getDashboardPath } from '@/utils/auth'
 import { NotificationDropdown } from '@/components/shared/NotificationDropdown'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -27,13 +28,13 @@ export function Navbar() {
               </Avatar>
               <div className="hidden sm:block text-left">
                 <p className="text-sm font-medium leading-tight">{user?.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role?.toLowerCase()}</p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem asChild>
-              <Link to={user?.role === 'admin' ? '/admin/profile' : `/${user?.role}/profile`}>
+              <Link to={`${getDashboardPath(user?.role)}/profile`}>
                 <User className="w-4 h-4 mr-2" /> Profile
               </Link>
             </DropdownMenuItem>

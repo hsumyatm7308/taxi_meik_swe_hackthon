@@ -1,47 +1,37 @@
 import apiClient from './client'
 import type { AuthResponse, LoginRequest, RegisterOwnerRequest, RegisterDriverRequest, User } from '@/types'
-import { authClient } from '@/lib/auth-client'
+
+function mapBackendUser(baUser: any): User {
+  return {
+    id: baUser.id as any,
+    name: baUser.name,
+    email: baUser.email,
+    phone: baUser.phone || '',
+    role: baUser.role as any,
+    email_verified_at: baUser.emailVerified ? new Date().toISOString() : null,
+    verification_status: baUser.verificationStatus as any || 'unverified',
+    suspension_reason: null,
+    profile_photo_url: baUser.image || null,
+    created_at: baUser.createdAt ? new Date(baUser.createdAt).toISOString() : new Date().toISOString(),
+    updated_at: baUser.updatedAt ? new Date(baUser.updatedAt).toISOString() : new Date().toISOString(),
+  }
+}
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    if (!data.phone) {
-      throw new Error('Phone number is required')
-    }
-    // Get the email associated with this phone number
-    const { email } = await authApi.getEmailByPhone(data.phone)
-    
-    // Sign in using Better Auth
-    const response = await authClient.signIn.email({
-      email,
+    const response = await apiClient.post('/auth/login', {
+      email: data.email,
+      phone: data.phone,
       password: data.password,
     })
 
-    if (response.error) {
-      throw new Error(response.error.message || 'Login failed')
-    }
-
-    if (!response.data?.user) {
-      throw new Error('User data not found after login')
-    }
-
-    const baUser = response.data.user as any
-    const mappedUser: User = {
-      id: baUser.id as any,
-      name: baUser.name,
-      email: baUser.email,
-      phone: baUser.phone || '',
-      role: baUser.role as any,
-      email_verified_at: baUser.emailVerified ? new Date().toISOString() : null,
-      verification_status: baUser.verificationStatus as any || 'unverified',
-      suspension_reason: null,
-      profile_photo_url: baUser.image || null,
-      created_at: baUser.createdAt ? new Date(baUser.createdAt).toISOString() : new Date().toISOString(),
-      updated_at: baUser.updatedAt ? new Date(baUser.updatedAt).toISOString() : new Date().toISOString(),
+    if (!response.data?.user || !response.data?.accessToken) {
+      throw new Error(response.data?.error || 'Login failed')
     }
 
     return {
-      user: mappedUser,
-      token: (response.data as any).session?.token || 'session-token',
+      user: mapBackendUser(response.data.user),
+      token: response.data.accessToken,
     }
   },
 
@@ -69,27 +59,34 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    await authClient.signOut()
+    await apiClient.post('/auth/logout')
   },
 
-  me: async (): Promise<User> => {
-    const response = await authClient.getSession()
-    if (response.error || !response.data?.user) {
-      throw new Error('Not authenticated')
-    }
-    const baUser = response.data.user as any
-    return {
-      id: baUser.id as any,
-      name: baUser.name,
-      email: baUser.email,
-      phone: baUser.phone || '',
-      role: baUser.role as any,
-      email_verified_at: baUser.emailVerified ? new Date().toISOString() : null,
-      verification_status: baUser.verificationStatus as any || 'unverified',
-      suspension_reason: null,
-      profile_photo_url: baUser.image || null,
-      created_at: baUser.createdAt ? new Date(baUser.createdAt).toISOString() : new Date().toISOString(),
-      updated_at: baUser.updatedAt ? new Date(baUser.updatedAt).toISOString() : new Date().toISOString(),
+  me: async (): Promise<AuthResponse> => {
+    try {
+      const response = await apiClient.get('/auth/session')
+      if (!response.data?.user) {
+        throw new Error('Not authenticated')
+      }
+      return {
+        user: mapBackendUser(response.data.user),
+        token: response.data.session?.token || response.data.session?.accessToken || '',
+      }
+    } catch (error: any) {
+      const status = error?.response?.status
+      if (status !== 401) {
+        throw error
+      }
+
+      const refreshed = await apiClient.post('/auth/refresh')
+      if (!refreshed.data?.user) {
+        throw new Error('Not authenticated')
+      }
+
+      return {
+        user: mapBackendUser(refreshed.data.user),
+        token: refreshed.data.session?.token || refreshed.data.accessToken || '',
+      }
     }
   },
 
