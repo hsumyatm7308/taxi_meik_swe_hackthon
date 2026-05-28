@@ -1,6 +1,14 @@
 import crypto from "crypto";
 import prisma from "../src/lib/prisma.js";
 import { auth } from "../src/lib/auth.js";
+import {
+  buildSessionTokens,
+  persistTokens,
+  revokeCustomSession,
+  getCookieOptions,
+  hashToken,
+  type AuthTokens,
+} from "../src/lib/auth-service.js";
 
 export type AuthRole = "DRIVER" | "OWNER" | "ADMIN";
 
@@ -21,11 +29,8 @@ export interface RegisterRequestData {
   [key: string]: unknown;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpiresAt: Date;
-  refreshTokenExpiresAt: Date;
+export function getCookieOptionsExport(maxAgeMs: number) {
+  return getCookieOptions(maxAgeMs);
 }
 
 class AuthServiceError extends Error {
@@ -46,16 +51,11 @@ interface PendingRegistration {
 const pendingRegistrations = new Map<string, PendingRegistration>();
 const REGISTRATION_TTL_MS = 10 * 60 * 1000;
 const OTP_TTL_MS = 5 * 60 * 1000;
-const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 let cleanupTimer: NodeJS.Timeout | null = null;
 
 function startCleanupLoop() {
-  if (cleanupTimer) {
-    return;
-  }
-
+  if (cleanupTimer) return;
   cleanupTimer = setInterval(() => {
     const now = Date.now();
     for (const [token, registration] of pendingRegistrations.entries()) {
@@ -71,22 +71,6 @@ function startCleanupLoop() {
 }
 
 startCleanupLoop();
-
-function hashToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-function buildSessionTokens(): AuthTokens {
-  const accessToken = crypto.randomBytes(32).toString("hex");
-  const refreshToken = crypto.randomBytes(48).toString("hex");
-
-  return {
-    accessToken,
-    refreshToken,
-    accessTokenExpiresAt: new Date(Date.now() + ACCESS_TOKEN_TTL_MS),
-    refreshTokenExpiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
-  };
-}
 
 async function getAuthUserById(userId: string) {
   const user = await prisma.user.findUnique({
@@ -107,34 +91,10 @@ async function getAuthUserById(userId: string) {
     },
   });
 
-  if (!user) {
-    throw new AuthServiceError("Account not found", 404);
-  }
-
-  if (!user.isActive) {
-    throw new AuthServiceError("Account is disabled", 403);
-  }
+  if (!user) throw new AuthServiceError("Account not found", 404);
+  if (!user.isActive) throw new AuthServiceError("Account is disabled", 403);
 
   return user;
-}
-
-async function persistTokens(userId: string, tokens: AuthTokens) {
-  const updated = await prisma.account.updateMany({
-    where: {
-      userId,
-      providerId: "credential",
-    },
-    data: {
-      accessToken: tokens.accessToken,
-      refreshToken: hashToken(tokens.refreshToken),
-      accessTokenExpiresAt: tokens.accessTokenExpiresAt,
-      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
-    },
-  });
-
-  if (updated.count === 0) {
-    throw new AuthServiceError("Unable to persist session tokens", 500);
-  }
 }
 
 function validateRegistrationData(data: RegisterRequestData) {
@@ -145,14 +105,10 @@ function validateRegistrationData(data: RegisterRequestData) {
 
 async function assertAccountAvailability(email: string, phone: string) {
   const existingEmail = await prisma.user.findUnique({ where: { email } });
-  if (existingEmail) {
-    throw new AuthServiceError("Email is already registered", 400);
-  }
+  if (existingEmail) throw new AuthServiceError("Email is already registered", 400);
 
   const existingPhone = await prisma.user.findUnique({ where: { phone } });
-  if (existingPhone) {
-    throw new AuthServiceError("Phone number is already registered", 400);
-  }
+  if (existingPhone) throw new AuthServiceError("Phone number is already registered", 400);
 }
 
 export async function createRegistrationRequest(data: RegisterRequestData) {
@@ -177,11 +133,7 @@ export async function createRegistrationRequest(data: RegisterRequestData) {
     },
   });
 
-  return {
-    tempToken,
-    code: otpCode,
-    message: "OTP sent successfully",
-  };
+  return { tempToken, code: otpCode, message: "OTP sent successfully" };
 }
 
 export async function verifyRegistration(tempToken: string, code: string) {
@@ -281,55 +233,37 @@ export async function verifyRegistration(tempToken: string, code: string) {
 }
 
 export async function getEmailByPhone(phone: string) {
-  if (!phone) {
-    throw new AuthServiceError("Phone number is required", 400);
-  }
+  if (!phone) throw new AuthServiceError("Phone number is required", 400);
 
   const user = await prisma.user.findUnique({
     where: { phone },
     select: { email: true },
   });
 
-  if (!user) {
-    throw new AuthServiceError("No account found with this phone number", 404);
-  }
+  if (!user) throw new AuthServiceError("No account found with this phone number", 404);
 
   return user;
 }
 
 export async function loginWithCredentials(params: { email?: string; phone?: string; password: string }) {
   const email = params.email || (params.phone ? (await getEmailByPhone(params.phone)).email : "");
-  if (!email) {
-    throw new AuthServiceError("Email or phone number is required", 400);
-  }
+  if (!email) throw new AuthServiceError("Email or phone number is required", 400);
 
   const response = await auth.api.signInEmail({
-    body: {
-      email,
-      password: params.password,
-    },
+    body: { email, password: params.password },
   });
 
-  if (!response?.user) {
-    throw new AuthServiceError("Invalid credentials", 401);
-  }
+  if (!response?.user) throw new AuthServiceError("Invalid credentials", 401);
 
   const user = await getAuthUserById(response.user.id);
   const tokens = buildSessionTokens();
   await persistTokens(user.id, tokens);
 
-  return {
-    success: true,
-    message: "Login successful",
-    user,
-    tokens,
-  };
+  return { success: true, message: "Login successful", user, tokens };
 }
 
 export async function refreshCustomSession(refreshToken: string) {
-  if (!refreshToken) {
-    throw new AuthServiceError("Refresh token is required", 401);
-  }
+  if (!refreshToken) throw new AuthServiceError("Refresh token is required", 401);
 
   const hashedRefreshToken = hashToken(refreshToken);
   const account = await prisma.account.findFirst({
@@ -337,54 +271,24 @@ export async function refreshCustomSession(refreshToken: string) {
       refreshToken: hashedRefreshToken,
       refreshTokenExpiresAt: { gt: new Date() },
     },
-    select: {
-      userId: true,
-    },
+    select: { userId: true },
   });
 
-  if (!account) {
-    throw new AuthServiceError("Invalid or expired refresh token", 401);
-  }
+  if (!account) throw new AuthServiceError("Invalid or expired refresh token", 401);
 
   const user = await getAuthUserById(account.userId);
   const tokens = buildSessionTokens();
   await persistTokens(user.id, tokens);
 
-  return {
-    success: true,
-    message: "Session refreshed successfully",
-    user,
-    tokens,
-  };
-}
-
-export async function revokeCustomSession(userId: string) {
-  await prisma.account.updateMany({
-    where: {
-      userId,
-      providerId: "credential",
-    },
-    data: {
-      accessToken: null,
-      refreshToken: null,
-      accessTokenExpiresAt: null,
-      refreshTokenExpiresAt: null,
-    },
-  });
+  return { success: true, message: "Session refreshed successfully", user, tokens };
 }
 
 export async function revokeCustomSessionByAccessToken(accessToken: string) {
-  if (!accessToken) {
-    return;
-  }
+  if (!accessToken) return;
 
   const account = await prisma.account.findFirst({
-    where: {
-      accessToken,
-    },
-    select: {
-      userId: true,
-    },
+    where: { accessToken },
+    select: { userId: true },
   });
 
   if (account) {
@@ -393,68 +297,42 @@ export async function revokeCustomSessionByAccessToken(accessToken: string) {
 }
 
 export async function revokeCustomSessionByRefreshToken(refreshToken: string) {
-  if (!refreshToken) {
-    console.debug('[authService] revokeCustomSessionByRefreshToken called with empty token')
-    return;
-  }
+  if (!refreshToken) return;
 
-  console.debug('[authService] revokeCustomSessionByRefreshToken received token length:', String(refreshToken).length)
   const hashed = hashToken(refreshToken);
   const account = await prisma.account.findFirst({
-    where: {
-      refreshToken: hashed,
-    },
-    select: {
-      userId: true,
-    },
+    where: { refreshToken: hashed },
+    select: { userId: true },
   });
 
   if (account) {
-    console.debug('[authService] revokeCustomSessionByRefreshToken found account for userId:', account.userId)
     await revokeCustomSession(account.userId);
-  } else {
-    console.debug('[authService] revokeCustomSessionByRefreshToken found no account for hashed token')
   }
 }
 
 export async function getCustomSession(accessToken?: string) {
-  if (!accessToken) {
-    throw new AuthServiceError("Unauthorized", 401);
-  }
+  if (!accessToken) throw new AuthServiceError("Unauthorized", 401);
 
   const account = await prisma.account.findFirst({
     where: {
       accessToken,
       accessTokenExpiresAt: { gt: new Date() },
     },
-    select: {
-      userId: true,
-    },
+    select: { userId: true },
   });
 
-  if (!account) {
-    throw new AuthServiceError("Unauthorized", 401);
-  }
+  if (!account) throw new AuthServiceError("Unauthorized", 401);
 
   const user = await getAuthUserById(account.userId);
-  return {
-    success: true,
-    user,
-  };
+  return { success: true, user };
 }
 
-export function getCookieOptions(maxAgeMs: number) {
-  return {
-    httpOnly: true,
-    sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: maxAgeMs,
-  };
+export function getCookieOptionsExportFn(maxAgeMs: number) {
+  return getCookieOptions(maxAgeMs);
 }
 
 export function getPendingRegistrationCount() {
   return pendingRegistrations.size;
 }
 
-export { AuthServiceError };
+export { AuthServiceError, buildSessionTokens, persistTokens, getCookieOptions, hashToken };

@@ -7,7 +7,8 @@ import {
   getEmailByPhone,
   loginWithCredentials,
   refreshCustomSession,
-  revokeCustomSessionByAccessToken, revokeCustomSessionByRefreshToken,
+  revokeCustomSessionByAccessToken,
+  revokeCustomSessionByRefreshToken,
   verifyRegistration,
 } from "../service/authService.js";
 
@@ -15,24 +16,8 @@ function handleError(res: Response, error: unknown) {
   if (error instanceof AuthServiceError) {
     return res.status(error.statusCode).json({ error: error.message });
   }
-
   const message = error instanceof Error ? error.message : "Internal server error";
   return res.status(500).json({ error: message });
-}
-
-function getCookieValue(header: string | undefined, name: string) {
-  if (!header) {
-    return undefined;
-  }
-
-  for (const chunk of header.split(";")) {
-    const [rawKey, ...rawValue] = chunk.trim().split("=");
-    if (rawKey === name && rawValue.length > 0) {
-      return decodeURIComponent(rawValue.join("="));
-    }
-  }
-
-  return undefined;
 }
 
 export async function registerRequest(req: Request, res: Response) {
@@ -81,7 +66,6 @@ export async function getEmailByPhoneController(req: Request, res: Response) {
     if (typeof phone !== "string") {
       return res.status(400).json({ error: "Phone number is required" });
     }
-
     const result = await getEmailByPhone(phone);
     return res.json({ email: result.email });
   } catch (error) {
@@ -117,7 +101,7 @@ export async function login(req: Request, res: Response) {
 
 export async function refresh(req: Request, res: Response) {
   try {
-    const refreshToken = (req.body?.refreshToken as string | undefined) || getCookieValue(req.headers.cookie, "refreshToken");
+    const refreshToken = req.body?.refreshToken || req.cookies?.refreshToken;
     const result = await refreshCustomSession(refreshToken || "");
 
     res.cookie("accessToken", result.tokens.accessToken, getCookieOptions(15 * 60 * 1000));
@@ -143,16 +127,13 @@ export async function refresh(req: Request, res: Response) {
 
 export async function logout(req: Request, res: Response) {
   try {
-    const accessToken = getCookieValue(req.headers.cookie, "accessToken") || getCookieValue(req.headers.cookie, "session");
-    const refreshToken = getCookieValue(req.headers.cookie, "refreshToken");
-n    console.debug('[authController] logout called; accessToken length:', accessToken ? String(accessToken).length : 0, 'refreshToken length:', refreshToken ? String(refreshToken).length : 0)
+    const accessToken = req.cookies?.accessToken || req.cookies?.session;
+    const refreshToken = req.cookies?.refreshToken;
 
-    // Revoke both access and refresh tokens server-side to ensure logout is effective
     await revokeCustomSessionByAccessToken(accessToken || "");
     await revokeCustomSessionByRefreshToken(refreshToken || "");
 
     try {
-      // Also sign out from better-auth to ensure its cookies/sessions are cleared
       const headers = new Headers();
       for (const [key, value] of Object.entries(req.headers)) {
         if (value) {
@@ -163,13 +144,12 @@ export async function logout(req: Request, res: Response) {
           }
         }
       }
-      // signOut will clear better-auth managed cookies/sessions
       await auth.api.signOut({ headers });
     } catch (e) {
-      console.debug('[authController] auth.api.signOut failed', e)
+      console.debug("[authController] auth.api.signOut failed", e);
     }
 
-    // Clear cookies on client
+    // Clear all cookies
     res.clearCookie("accessToken", getCookieOptions(0));
     res.clearCookie("refreshToken", getCookieOptions(0));
     res.clearCookie("session", getCookieOptions(0));
