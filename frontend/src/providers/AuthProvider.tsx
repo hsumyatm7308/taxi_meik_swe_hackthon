@@ -71,6 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    // Prevent immediate auto-refresh re-auth which may happen if server refresh token still valid.
+    try {
+      sessionStorage.setItem('skip_refresh', '1')
+    } catch (e) {
+      // ignore
+    }
+
     try {
       await authApi.logout()
     } catch (err) {
@@ -80,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       sessionStorage.removeItem(USER_CACHE_KEY)
       sessionStorage.removeItem(TOKEN_CACHE_KEY)
+      // keep skip_refresh until consumed by authApi.me to avoid immediate silent refresh
     }
   }, [])
 
