@@ -12,7 +12,7 @@ import { ContactPage } from '@/features/public/ContactPage'
 import { FAQPage } from '@/features/public/FAQPage'
 import { TermsPage } from '@/features/public/TermsPage'
 import { PrivacyPage } from '@/features/public/PrivacyPage'
-import { BrowseCarsPage } from '@/features/public/BrowseCarsPage'
+// import { BrowseCarsPage } from '@/features/public/BrowseCarsPage'
 import { CarDetailsPage } from '@/features/public/CarDetailsPage'
 
 // Auth pages
@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
       { path: 'faq', element: <FAQPage /> },
       { path: 'terms', element: <TermsPage /> },
       { path: 'privacy', element: <PrivacyPage /> },
-      { path: 'cars', element: <BrowseCarsPage /> },
+      // { path: 'cars', element: <BrowseCarsPage /> },
       { path: 'cars/:id', element: <CarDetailsPage /> },
     ],
   },

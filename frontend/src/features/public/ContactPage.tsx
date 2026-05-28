@@ -36,20 +36,20 @@ export function ContactPage() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium mb-1 block">Name</label>
-                  <Input placeholder="Your name" />
+                  <Input placeholder="Your name" className="bg-muted/10 text-white placeholder:text-muted-foreground border-none" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Email</label>
-                  <Input type="email" placeholder="your@email.com" />
+                  <Input type="email" placeholder="your@email.com" className="bg-muted/10 text-white placeholder:text-muted-foreground border-none" />
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Subject</label>
-                <Input placeholder="How can we help?" />
+                <Input placeholder="How can we help?" className="bg-muted/10 text-white placeholder:text-muted-foreground border-none" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Message</label>
-                <textarea className="flex min-h-[120px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Your message..." />
+                <textarea className="flex min-h-[120px] w-full border-none rounded-lg border border-input bg-muted/10 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder="Your message..." />
               </div>
               <Button type="submit" className="w-full">Send Message</Button>
             </form>
