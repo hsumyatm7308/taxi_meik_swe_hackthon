@@ -41,7 +41,7 @@ import { DriverBookingsPage } from '@/features/driver/DriverBookingsPage'
 import { DriverBookingDetailPage } from '@/features/driver/DriverBookingDetailPage'
 import { DriverPaymentsPage } from '@/features/driver/DriverPaymentsPage'
 import { DriverDepositsPage } from '@/features/driver/DriverDepositsPage'
-import { DriverDocumentsPage } from '@/features/driver/DriverDocumentsPage'
+import { KYCPage } from '@/features/driver/KYCPage'
 import { DriverDisputesPage } from '@/features/driver/DriverDisputesPage'
 import { DriverReviewsPage } from '@/features/driver/DriverReviewsPage'
 import { DriverProfilePage } from '@/features/driver/DriverProfilePage'
@@ -121,7 +121,7 @@ export const router = createBrowserRouter([
       { path: 'bookings/:id', element: <DriverBookingDetailPage /> },
       { path: 'payments', element: <DriverPaymentsPage /> },
       { path: 'deposits', element: <DriverDepositsPage /> },
-      { path: 'documents', element: <DriverDocumentsPage /> },
+      { path: 'documents', element: <KYCPage /> },
       { path: 'disputes', element: <DriverDisputesPage /> },
       { path: 'reviews', element: <DriverReviewsPage /> },
       { path: 'profile', element: <DriverProfilePage /> },

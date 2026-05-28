@@ -62,6 +62,7 @@ const registerDriverBaseSchema = z.object({
   city: z.string().min(1, 'City is required'),
   township: z.string().min(1, 'Township is required'),
   license_number: z.string().min(3, 'Invalid license number'),
+  license_expiry: z.string().min(1, 'License expiry is required'),
   years_experience: z.number().min(0, 'Invalid experience'),
 })
 
@@ -82,6 +83,7 @@ export const registerDriverStepTwoSchema = registerDriverBaseSchema.pick({
   city: true,
   township: true,
   license_number: true,
+  license_expiry: true,
   years_experience: true,
 })
 
@@ -152,12 +154,40 @@ export const newPasswordSchema = z.object({
   path: ['password_confirmation'],
 })
 
-export const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().min(7, 'Invalid phone number'),
-  address: z.string().optional(),
-  bio: z.string().optional(),
-})
+export const profileSchema = z
+  .object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    phone: z.string().min(7, 'Invalid phone number'),
+    address: z.string().optional(),
+    bio: z.string().optional(),
+    password: z.string().optional().or(z.literal("")),
+    password_confirmation: z.string().optional().or(z.literal("")),
+  })
+  .refine(
+    (data) => {
+      if (data.password && data.password !== "") {
+        return data.password === data.password_confirmation;
+      }
+      return true;
+    },
+    {
+      message: "Passwords do not match",
+      path: ["password_confirmation"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.password && data.password !== "") {
+        const res = passwordSchema.safeParse(data.password);
+        return res.success;
+      }
+      return true;
+    },
+    {
+      message: "Password must be at least 8 characters and include a number and a special character",
+      path: ["password"],
+    }
+  );
 
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterOwnerFormData = z.infer<typeof registerOwnerSchema>

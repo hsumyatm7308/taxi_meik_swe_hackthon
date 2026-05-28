@@ -1,21 +1,19 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { KYCLock } from '@/components/shared/KYCLock'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/providers'
+import { usersApi } from '@/api'
 import { MOCK_BOOKINGS } from '@/mock-data/driver'
 import { formatDate, formatCurrency } from '@/utils/format'
-import { Car, Calendar, DollarSign, XCircle } from 'lucide-react'
-
-const KYC_REQUIRED = ['verified', 'trusted']
+import { Car, Calendar, DollarSign, XCircle, ShieldAlert, Loader2 } from 'lucide-react'
 
 export function DriverBookingsPage() {
   const navigate = useNavigate()
@@ -23,6 +21,31 @@ export function DriverBookingsPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [cancelId, setCancelId] = useState<number | null>(null)
   const [localBookings, setLocalBookings] = useState(MOCK_BOOKINGS)
+  
+  const [kycStatus, setKycStatus] = useState<string>('PENDING')
+  const [loadingKyc, setLoadingKyc] = useState(true)
+
+  useEffect(() => {
+    const fetchKycStatus = async () => {
+      try {
+        const kycData = await usersApi.getKycStatus()
+        setKycStatus(kycData?.kycStatus || 'PENDING')
+      } catch (err) {
+        // Fallback to checking the user session's verification_status
+        if (user?.verification_status === 'verified' || user?.verification_status === 'trusted') {
+          setKycStatus('APPROVED')
+        } else {
+          setKycStatus('PENDING')
+        }
+      } finally {
+        setLoadingKyc(false)
+      }
+    }
+
+    if (user) {
+      fetchKycStatus()
+    }
+  }, [user])
 
   const filtered = useMemo(() => {
     if (activeTab === 'all') return localBookings
@@ -48,7 +71,33 @@ export function DriverBookingsPage() {
     cancelled: localBookings.filter((b) => b.status === 'cancelled').length,
   }
 
-  const content = (
+  if (loadingKyc) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
+        <p className="text-sm text-muted-foreground">Checking verification status...</p>
+      </div>
+    )
+  }
+
+  if (kycStatus !== 'APPROVED') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-6 bg-slate-50 dark:bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 max-w-lg mx-auto my-12 shadow-sm">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-950/30 flex items-center justify-center rounded-full mb-4">
+          <ShieldAlert className="w-8 h-8 text-red-600 dark:text-red-400 animate-pulse" />
+        </div>
+        <h2 className="text-xl font-bold mb-2">KYC Verification Required</h2>
+        <p className="text-sm text-muted-foreground max-w-sm mb-6">
+          Please complete your identity verification to access My Booking.
+        </p>
+        <Button onClick={() => navigate('/driver/documents')} className="px-6 py-2">
+          Go to KYC
+        </Button>
+      </div>
+    )
+  }
+
+  return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">My Booking</h1>
 
@@ -131,10 +180,4 @@ export function DriverBookingsPage() {
       </Dialog>
     </div>
   )
-
-  if (user && !KYC_REQUIRED.includes(user.verification_status)) {
-    return <KYCLock feature="My Booking">{content}</KYCLock>
-  }
-
-  return content
 }

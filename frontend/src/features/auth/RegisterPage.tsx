@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import {
   Car,
+  CalendarDays,
   Eye,
   EyeOff,
   Hash,
@@ -667,8 +668,8 @@ function DriverStepTwo({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-2 sm:col-span-1">
           <Label htmlFor="driver-license-number" className="text-white/80">
             License Number
           </Label>
@@ -688,7 +689,27 @@ function DriverStepTwo({
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 sm:col-span-1">
+          <Label htmlFor="driver-license-expiry" className="text-white/80">
+            License Expiry
+          </Label>
+          <div className="relative">
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <Input
+              id="driver-license-expiry"
+              type="date"
+              className={`pl-10 ${glassInputClass}`}
+              {...register("license_expiry")}
+            />
+          </div>
+          {errors.license_expiry && (
+            <p className="text-xs text-rose-200">
+              {errors.license_expiry.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2 sm:col-span-1">
           <Label htmlFor="driver-years-experience" className="text-white/80">
             Year of Experience
           </Label>
