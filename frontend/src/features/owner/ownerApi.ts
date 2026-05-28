@@ -11,7 +11,7 @@ export const ownersApi = {
       verified_cars: 3,
       active_rentals: 2,
       pending_bookings: 1,
-      total_earnings: 1250000,
+      total_earnings: 12000000,
       monthly_earnings: [
         { month: 'Jan', amount: 350000 },
         { month: 'Feb', amount: 420000 },

@@ -19,7 +19,7 @@ export function Navbar() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 hover:bg-muted rounded-lg p-1.5 transition-colors">
+            <button className="flex items-center gap-2 rounded-lg p-1.5 transition-colors">
               <Avatar className="w-8 h-8">
                 <AvatarImage src={user?.profile_photo_url || ''} />
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
