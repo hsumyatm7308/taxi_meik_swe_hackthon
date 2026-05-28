@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { auth } from "../src/lib/auth.js";
 import {
   AuthServiceError,
   createRegistrationRequest,
@@ -144,11 +145,31 @@ export async function logout(req: Request, res: Response) {
   try {
     const accessToken = getCookieValue(req.headers.cookie, "accessToken") || getCookieValue(req.headers.cookie, "session");
     const refreshToken = getCookieValue(req.headers.cookie, "refreshToken");
+n    console.debug('[authController] logout called; accessToken length:', accessToken ? String(accessToken).length : 0, 'refreshToken length:', refreshToken ? String(refreshToken).length : 0)
 
     // Revoke both access and refresh tokens server-side to ensure logout is effective
     await revokeCustomSessionByAccessToken(accessToken || "");
     await revokeCustomSessionByRefreshToken(refreshToken || "");
 
+    try {
+      // Also sign out from better-auth to ensure its cookies/sessions are cleared
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (value) {
+          if (Array.isArray(value)) {
+            value.forEach((v) => headers.append(key, v));
+          } else {
+            headers.set(key, value as string);
+          }
+        }
+      }
+      // signOut will clear better-auth managed cookies/sessions
+      await auth.api.signOut({ headers });
+    } catch (e) {
+      console.debug('[authController] auth.api.signOut failed', e)
+    }
+
+    // Clear cookies on client
     res.clearCookie("accessToken", getCookieOptions(0));
     res.clearCookie("refreshToken", getCookieOptions(0));
     res.clearCookie("session", getCookieOptions(0));

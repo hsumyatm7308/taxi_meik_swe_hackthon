@@ -394,9 +394,11 @@ export async function revokeCustomSessionByAccessToken(accessToken: string) {
 
 export async function revokeCustomSessionByRefreshToken(refreshToken: string) {
   if (!refreshToken) {
+    console.debug('[authService] revokeCustomSessionByRefreshToken called with empty token')
     return;
   }
 
+  console.debug('[authService] revokeCustomSessionByRefreshToken received token length:', String(refreshToken).length)
   const hashed = hashToken(refreshToken);
   const account = await prisma.account.findFirst({
     where: {
@@ -408,7 +410,10 @@ export async function revokeCustomSessionByRefreshToken(refreshToken: string) {
   });
 
   if (account) {
+    console.debug('[authService] revokeCustomSessionByRefreshToken found account for userId:', account.userId)
     await revokeCustomSession(account.userId);
+  } else {
+    console.debug('[authService] revokeCustomSessionByRefreshToken found no account for hashed token')
   }
 }
 
