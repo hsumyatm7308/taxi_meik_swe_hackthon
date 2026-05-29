@@ -113,7 +113,8 @@ export function DriverBookingDetailPage() {
 
   const paymentStatus = booking.payment_status || booking.payment?.status || 'incomplete'
   const depositStatus = booking.deposit_status || booking.deposit?.status || 'incomplete'
-  const canSubmitPayment = booking.status === 'accepted' && ['incomplete', 'failed'].includes(paymentStatus)
+  const agreementComplete = !!booking.owner_agreement_agreed_at && !!booking.driver_agreement_agreed_at
+  const canSubmitPayment = booking.status === 'accepted' && agreementComplete && ['incomplete', 'failed'].includes(paymentStatus)
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">

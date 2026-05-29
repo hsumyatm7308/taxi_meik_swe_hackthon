@@ -3,7 +3,7 @@ import { Upload, X, FileImage } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FileUploaderProps {
-  onUpload: (file: File) => void
+  onUpload: (file: File) => void | Promise<void>
   accept?: string
   maxSize?: number
   preview?: string | null
@@ -18,12 +18,15 @@ export function FileUploader({
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
+    if (uploading) return
+
     if (file.size > maxSize * 1024 * 1024) {
       alert(`File size must be less than ${maxSize}MB`)
       return
     }
-    onUpload(file)
+
+    await onUpload(file)
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -35,7 +38,10 @@ export function FileUploader({
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) handleFile(file)
+    if (file) {
+      void handleFile(file)
+      e.target.value = ''
+    }
   }
 
   return (
@@ -43,9 +49,12 @@ export function FileUploader({
       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => {
+        if (!uploading) inputRef.current?.click()
+      }}
       className={cn(
         'relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all',
+        uploading && 'pointer-events-none opacity-70',
         dragOver
           ? 'border-primary bg-primary/5 scale-[1.02]'
           : 'border-border hover:border-primary/50 hover:bg-muted/50',
@@ -56,6 +65,7 @@ export function FileUploader({
         type="file"
         accept={accept}
         onChange={handleChange}
+        disabled={uploading}
         className="hidden"
       />
 
