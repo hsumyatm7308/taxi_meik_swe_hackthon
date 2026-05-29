@@ -3,9 +3,7 @@ import type { Payment, PaginatedResponse } from '@/types'
 
 export const paymentsApi = {
   submitPayment: async (bookingId: string | number, data: FormData): Promise<Payment> => {
-    const res = await apiClient.post(`/bookings/${bookingId}/payments`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const res = await apiClient.post(`/bookings/${bookingId}/payments`, data)
     return res.data.data
   },
 

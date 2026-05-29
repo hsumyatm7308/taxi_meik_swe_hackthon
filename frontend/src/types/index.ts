@@ -239,6 +239,9 @@ export interface Booking {
   end_date: string
   total_amount: number
   status: BookingStatus
+  agreement_sent_at?: string | null
+  owner_agreement_agreed_at?: string | null
+  driver_agreement_agreed_at?: string | null
   driver_notes: string | null
   owner_notes: string | null
   rejection_reason: string | null

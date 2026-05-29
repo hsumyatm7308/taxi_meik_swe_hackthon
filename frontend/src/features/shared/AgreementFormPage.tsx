@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { FileUploader } from '@/components/shared/FileUploader'
 import apiClient from '@/api/client'
+import { paymentsApi } from '@/api'
+import { PAYMENT_METHODS } from '@/constants'
 import { useAuth } from '@/providers'
-import { UserRole } from '@/types'
+import { useToast } from '@/providers'
+import { UserRole, type Payment } from '@/types'
+import { formatCurrency } from '@/utils/format'
 
 const fieldBase = 'inline-block border-0 border-b border-dotted border-slate-500 bg-transparent px-1 text-center align-baseline outline-none focus:border-slate-900 print:px-0'
 
@@ -52,7 +59,12 @@ function Clause({ number, title, children }: { number: string; title: string; ch
 export function AgreementFormPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { addToast } = useToast()
   const [signingKey, setSigningKey] = useState<'ownerSignature' | 'driverSignature' | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState('kbzpay')
+  const [payment, setPayment] = useState<Payment | null>(null)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentUploading, setPaymentUploading] = useState(false)
   const [fields, setFields] = useState<AgreementFields>({
     date: '',
     ownerCity: '',
@@ -96,9 +108,19 @@ export function AgreementFormPage() {
     setFields((current) => ({ ...current, [key]: value }))
   }
 
-  const canEditField = (key: string) => {
-    const role = user?.role?.toUpperCase()
+  const role = user?.role?.toUpperCase()
+  const bothAgreed = !!fields.ownerSignature && !!fields.driverSignature
+  const canUsePayment = role === UserRole.Owner || role === UserRole.Driver
+  const paymentAmount = payment?.amount ?? (role === UserRole.Owner ? Number(fields.commissionAmount || 0) : Number(fields.totalAmount || 0))
+  const paymentStatus = payment?.status || 'incomplete'
+  const canUploadPayment = bothAgreed && canUsePayment && ['incomplete', 'failed'].includes(paymentStatus)
+  const availablePaymentMethods = PAYMENT_METHODS.filter((method) =>
+    ['kbzpay', 'wavepay', 'ayapay'].includes(method.value),
+  )
+  const selectedPaymentMethod = availablePaymentMethods.find((method) => method.value === paymentMethod) || availablePaymentMethods[0]
+  const selectedAgencyPayment = getAgencyPaymentDetails(selectedPaymentMethod?.value || 'kbzpay')
 
+  const canEditField = (key: string) => {
     if (key.startsWith('owner')) {
       return role === UserRole.Owner && !fields.ownerSignature
     }
@@ -108,6 +130,20 @@ export function AgreementFormPage() {
     }
 
     return role === UserRole.Admin
+  }
+
+  const loadPayment = async () => {
+    if (!id || !bothAgreed || !canUsePayment) return
+
+    try {
+      setPaymentLoading(true)
+      const data = await paymentsApi.getBookingPayment(id)
+      setPayment(data)
+    } catch {
+      setPayment(null)
+    } finally {
+      setPaymentLoading(false)
+    }
   }
 
   const blank = (key: string, width = 'w-28') => (
@@ -132,6 +168,9 @@ export function AgreementFormPage() {
       setSigningKey(signatureKey)
       const res = await apiClient.post(`/agreements/${id}/agree`)
       const status = res.data.data || {}
+      const nextOwnerSignature = signatureText(fields.ownerName, status.owner_agreement_agreed_at) || fields.ownerSignature
+      const nextDriverSignature = signatureText(fields.driverName, status.driver_agreement_agreed_at) || fields.driverSignature
+
       setFields((current) => ({
         ...current,
         ownerSignature: signatureText(current.ownerName, status.owner_agreement_agreed_at) || current.ownerSignature,
@@ -139,8 +178,29 @@ export function AgreementFormPage() {
         [signatureKey]: signatureText(signedName, signatureKey === 'ownerSignature' ? status.owner_agreement_agreed_at : status.driver_agreement_agreed_at)
           || `${signedName} (${new Date().toLocaleDateString()})`,
       }))
+      if (nextOwnerSignature && nextDriverSignature) {
+        loadPayment()
+      }
     } finally {
       setSigningKey(null)
+    }
+  }
+
+  const handlePaymentUpload = async (file: File) => {
+    if (!id) return
+
+    try {
+      setPaymentUploading(true)
+      const formData = new FormData()
+      formData.append('method', paymentMethod)
+      formData.append('screenshot', file)
+      const data = await paymentsApi.submitPayment(id, formData)
+      setPayment(data)
+      addToast('Payment submitted for review', 'success')
+    } catch {
+      addToast('Payment upload failed', 'error')
+    } finally {
+      setPaymentUploading(false)
     }
   }
 
@@ -229,6 +289,10 @@ export function AgreementFormPage() {
 
     loadAgreement()
   }, [id])
+
+  useEffect(() => {
+    loadPayment()
+  }, [id, bothAgreed, role])
 
   return (
     <div className="min-h-screen bg-slate-200 py-8 print:bg-white print:py-0">
@@ -394,7 +458,121 @@ export function AgreementFormPage() {
             </div>
           </div>
         </Page>
+
+        {bothAgreed && canUsePayment && (
+          <section className="mx-auto max-w-[794px] print:hidden">
+            <Card>
+              <CardContent className="space-y-4 p-4">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    {role === UserRole.Owner ? 'Owner Commission Payment' : 'Driver Rental Payment'}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Both sides agreed. Choose a payment method, scan the agency QR code, then upload the payment proof.
+                  </p>
+                </div>
+
+                {paymentLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading payment details...</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      {availablePaymentMethods.map((method) => (
+                        <button
+                          key={method.value}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.value)}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                            paymentMethod === method.value
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-background hover:bg-muted'
+                          }`}
+                        >
+                          <span className="mr-1">{method.icon}</span>
+                          {method.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-4 rounded-lg border bg-muted/30 p-4 sm:grid-cols-[160px_1fr]">
+                      <div className="flex aspect-square items-center justify-center rounded-lg bg-white p-3">
+                        <img src={selectedAgencyPayment.qrImage} alt="Agency payment QR code" className="h-full w-full object-contain" />
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold">
+                          <QrCode className="h-4 w-4" />
+                          Agency QR Code
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <p><span className="text-muted-foreground">Account:</span> {selectedAgencyPayment.accountName}</p>
+                          <p><span className="text-muted-foreground">Phone:</span> {selectedAgencyPayment.accountNumber}</p>
+                          {paymentAmount ? <p><span className="text-muted-foreground">Amount:</span> {formatCurrency(paymentAmount)}</p> : null}
+                          <p><span className="text-muted-foreground">Status:</span> {paymentStatus.replace('_', ' ')}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {canUploadPayment ? (
+                      <FileUploader
+                        label={paymentUploading ? 'Uploading...' : 'Upload payment proof'}
+                        uploading={paymentUploading}
+                        onUpload={handlePaymentUpload}
+                      />
+                    ) : (
+                      <p className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
+                        Payment proof has already been submitted for this booking.
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        )}
       </div>
     </div>
   )
+}
+
+function getAgencyPaymentDetails(method: string) {
+  const details: Record<string, { accountName: string; accountNumber: string; qrImage: string }> = {
+    kbzpay: {
+      accountName: 'Taxi Meik Swe Agency',
+      accountNumber: '09 000 111 222',
+      qrImage: createQrPlaceholder('KBZPAY', '09 000 111 222'),
+    },
+    wavepay: {
+      accountName: 'Taxi Meik Swe Agency',
+      accountNumber: '09 000 333 444',
+      qrImage: createQrPlaceholder('WAVEPAY', '09 000 333 444'),
+    },
+    ayapay: {
+      accountName: 'Taxi Meik Swe Agency',
+      accountNumber: '09 000 555 666',
+      qrImage: createQrPlaceholder('AYAPAY', '09 000 555 666'),
+    },
+  }
+
+  return details[method] || details.kbzpay
+}
+
+function createQrPlaceholder(method: string, accountNumber: string) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+      <rect width="180" height="180" fill="white"/>
+      <rect x="14" y="14" width="44" height="44" fill="#0f172a"/>
+      <rect x="22" y="22" width="28" height="28" fill="white"/>
+      <rect x="30" y="30" width="12" height="12" fill="#0f172a"/>
+      <rect x="122" y="14" width="44" height="44" fill="#0f172a"/>
+      <rect x="130" y="22" width="28" height="28" fill="white"/>
+      <rect x="138" y="30" width="12" height="12" fill="#0f172a"/>
+      <rect x="14" y="122" width="44" height="44" fill="#0f172a"/>
+      <rect x="22" y="130" width="28" height="28" fill="white"/>
+      <rect x="30" y="138" width="12" height="12" fill="#0f172a"/>
+      <path d="M74 18h10v10H74zM96 18h10v20H96zM72 42h28v10H72zM112 72h12v12h-12zM132 72h24v10h-24zM72 74h12v24H72zM92 70h10v10H92zM108 96h48v10h-48zM70 112h22v10H70zM104 118h10v28h-10zM122 122h10v10h-10zM144 118h12v38h-12zM76 144h18v12H76zM96 156h34v10H96z" fill="#0f172a"/>
+      <text x="90" y="91" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#0f172a">${method}</text>
+      <text x="90" y="108" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#475569">${accountNumber}</text>
+    </svg>
+  `
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }

@@ -48,8 +48,8 @@ export function OwnerPaymentsPage() {
       await paymentsApi.submitPayment(payment.booking_id, formData)
       addToast('Owner commission submitted for review', 'success')
       loadPayments()
-    } catch {
-      addToast('Payment upload failed', 'error')
+    } catch (error: any) {
+      addToast(error?.response?.data?.error || 'Payment upload failed', 'error')
     } finally {
       setUploadingId(null)
     }
@@ -109,6 +109,7 @@ export function OwnerPaymentsPage() {
                         </div>
                         <FileUploader
                           label={uploadingId === payment.id ? 'Uploading...' : 'Upload owner commission proof'}
+                          uploading={uploadingId === payment.id}
                           onUpload={(file) => handleUpload(payment, file)}
                         />
                       </div>

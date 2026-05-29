@@ -9,7 +9,7 @@ import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 import { auth } from './lib/auth.js';
 import prisma from './lib/prisma.js';
 import crypto from 'crypto';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import driverRouter from '../routes/driverRoutes.js';
 import adminRouter from '../routes/admin/apiRoutes.js';
 
@@ -31,6 +31,22 @@ const paymentUpload = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
 });
+
+function uploadPaymentScreenshot(req: Request, res: Response, next: NextFunction) {
+  paymentUpload.single("screenshot")(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      res.status(400).json({ error: "Payment image must be less than 5MB" });
+      return;
+    }
+
+    res.status(400).json({ error: "Payment image upload failed" });
+  });
+}
 const allowedOrigins = new Set([
   "http://localhost:3000",
   "http://localhost:5173",
@@ -288,6 +304,8 @@ function serializeBooking(application: any) {
     owner_approval_status: application.ownerApprovalStatus,
     admin_approval_status: application.adminApprovalStatus || "PENDING",
     agreement_sent_at: application.agreementSentAt?.toISOString?.() || null,
+    owner_agreement_agreed_at: application.ownerAgreementAgreedAt?.toISOString?.() || null,
+    driver_agreement_agreed_at: application.driverAgreementAgreedAt?.toISOString?.() || null,
     driver_notes: application.wardRecommendationLetter || null,
     owner_notes: null,
     rejection_reason: application.ownerApprovalStatus === "REJECTED"
@@ -332,6 +350,8 @@ function calculateCommissionAmount(totalAmount: number, rate: number) {
 }
 
 async function getCommissionRateForUser(userId: string, payerRole: PaymentPayerRole) {
+  await ensureBookingPaymentStorage();
+
   const [row] = await prisma.$queryRaw<Array<{ count: bigint }>>`
     SELECT COUNT(*)::bigint AS count
     FROM booking_payments
@@ -421,12 +441,62 @@ function serializeIncompleteDeposit(application: any) {
   };
 }
 
+function isMissingOptionalFinanceTableError(error: any) {
+  const message = String(error?.message || "");
+  const databaseCode = String(error?.meta?.code || "");
+
+  return databaseCode === "42P01" || /relation .*booking_(payments|deposits).* does not exist/i.test(message);
+}
+
+async function ensureBookingPaymentStorage() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "booking_payments" (
+      "id" UUID PRIMARY KEY,
+      "booking_id" UUID NOT NULL,
+      "user_id" UUID NOT NULL,
+      "amount" DECIMAL(12, 2) NOT NULL,
+      "method" TEXT NOT NULL,
+      "payer_role" TEXT NOT NULL DEFAULT 'DRIVER',
+      "payment_purpose" TEXT NOT NULL DEFAULT 'rental_payment',
+      "commission_rate" DECIMAL(5, 4) NOT NULL DEFAULT 0.2000,
+      "commission_amount" DECIMAL(12, 2) NOT NULL DEFAULT 0,
+      "transaction_id" TEXT,
+      "screenshot_url" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'under_review',
+      "admin_notes" TEXT,
+      "paid_at" TIMESTAMP(3),
+      "confirmed_at" TIMESTAMP(3),
+      "confirmed_by" UUID,
+      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "booking_payments_booking_id_fkey" FOREIGN KEY ("booking_id") REFERENCES "car_applications"("id") ON DELETE CASCADE,
+      CONSTRAINT "booking_payments_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE
+    )
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE "booking_payments"
+    ADD COLUMN IF NOT EXISTS "payer_role" TEXT NOT NULL DEFAULT 'DRIVER',
+    ADD COLUMN IF NOT EXISTS "payment_purpose" TEXT NOT NULL DEFAULT 'rental_payment',
+    ADD COLUMN IF NOT EXISTS "commission_rate" DECIMAL(5, 4) NOT NULL DEFAULT 0.2000,
+    ADD COLUMN IF NOT EXISTS "commission_amount" DECIMAL(12, 2) NOT NULL DEFAULT 0
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE "booking_payments"
+    DROP CONSTRAINT IF EXISTS "booking_payments_booking_id_key"
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "booking_payments_booking_id_payer_role_key"
+    ON "booking_payments" ("booking_id", "payer_role")
+  `);
+}
+
 async function serializeBookingWithFinancials(application: any) {
   const payment = await getBookingPayment(application.id, "DRIVER");
   const ownerPayment = await getBookingPayment(application.id, "OWNER");
-  const [deposit] = await prisma.$queryRaw<Array<any>>`
-    SELECT * FROM booking_deposits WHERE booking_id = ${application.id}::uuid LIMIT 1
-  `;
+  const deposit = await getBookingDeposit(application.id);
   const booking = serializeBooking({ ...application, payment }) as any;
   return {
     ...booking,
@@ -440,22 +510,32 @@ async function serializeBookingWithFinancials(application: any) {
 }
 
 async function getBookingPayment(applicationId: string, payerRole: PaymentPayerRole = "DRIVER") {
-  const [payment] = await prisma.$queryRaw<Array<any>>`
-    SELECT * FROM booking_payments
-    WHERE booking_id = ${applicationId}::uuid
-      AND payer_role = ${payerRole}
-    LIMIT 1
-  `;
+  try {
+    const [payment] = await prisma.$queryRaw<Array<any>>`
+      SELECT * FROM booking_payments
+      WHERE booking_id = ${applicationId}::uuid
+        AND payer_role = ${payerRole}
+      LIMIT 1
+    `;
 
-  return payment || null;
+    return payment || null;
+  } catch (error) {
+    if (isMissingOptionalFinanceTableError(error)) return null;
+    throw error;
+  }
 }
 
 async function getBookingDeposit(applicationId: string) {
-  const [deposit] = await prisma.$queryRaw<Array<any>>`
-    SELECT * FROM booking_deposits WHERE booking_id = ${applicationId}::uuid LIMIT 1
-  `;
+  try {
+    const [deposit] = await prisma.$queryRaw<Array<any>>`
+      SELECT * FROM booking_deposits WHERE booking_id = ${applicationId}::uuid LIMIT 1
+    `;
 
-  return deposit || null;
+    return deposit || null;
+  } catch (error) {
+    if (isMissingOptionalFinanceTableError(error)) return null;
+    throw error;
+  }
 }
 
 async function notifyAdminsAboutPayment(application: any, payerRole: PaymentPayerRole, payment: any) {
@@ -2063,7 +2143,7 @@ app.post("/api/agreements/:id/agree", async (req, res) => {
   }
 });
 
-app.post("/api/bookings/:id/payments", paymentUpload.single("screenshot"), async (req, res) => {
+app.post("/api/bookings/:id/payments", uploadPaymentScreenshot, async (req, res) => {
   try {
     const authUser = await requireUser(req, res, ["DRIVER", "OWNER"]);
     if (!authUser) return;
@@ -2084,6 +2164,10 @@ app.post("/api/bookings/:id/payments", paymentUpload.single("screenshot"), async
       return res.status(404).json({ error: "Approved booking not found" });
     }
 
+    if (!application.ownerAgreementAgreedAt || !application.driverAgreementAgreedAt) {
+      return res.status(403).json({ error: "Both owner and driver must agree before payment can be submitted" });
+    }
+
     const method = String(req.body.method || "");
     if (!method) {
       return res.status(400).json({ error: "Payment method is required" });
@@ -2094,6 +2178,7 @@ app.post("/api/bookings/:id/payments", paymentUpload.single("screenshot"), async
       return res.status(400).json({ error: "Payment screenshot is required" });
     }
 
+    await ensureBookingPaymentStorage();
     const quote = await getPaymentQuote(application, payerRole);
 
     await prisma.$executeRaw`
@@ -2137,7 +2222,11 @@ app.post("/api/bookings/:id/payments", paymentUpload.single("screenshot"), async
     `;
 
     const payment = await getBookingPayment(application.id, payerRole);
-    await notifyAdminsAboutPayment(application, payerRole, payment);
+    try {
+      await notifyAdminsAboutPayment(application, payerRole, payment);
+    } catch (notificationError) {
+      console.error("Payment notification error:", notificationError);
+    }
     return res.json({ data: serializePayment(payment) });
   } catch (error: any) {
     console.error("Submit payment error:", error);
@@ -2185,6 +2274,8 @@ app.get("/api/driver/payments", async (req, res) => {
         driverId: authUser.id,
         ownerApprovalStatus: "APPROVED",
         adminApprovalStatus: "APPROVED",
+        ownerAgreementAgreedAt: { not: null },
+        driverAgreementAgreedAt: { not: null },
       },
       include: { car: true },
       orderBy: { updatedAt: "desc" },
@@ -2218,6 +2309,8 @@ app.get("/api/owner/payments", async (req, res) => {
         ownerId: authUser.id,
         ownerApprovalStatus: "APPROVED",
         adminApprovalStatus: "APPROVED",
+        ownerAgreementAgreedAt: { not: null },
+        driverAgreementAgreedAt: { not: null },
       },
       include: { car: true },
       orderBy: { updatedAt: "desc" },
@@ -2319,7 +2412,7 @@ app.post("/api/admin/payments/:id/reject", async (req, res) => {
   }
 });
 
-app.post("/api/bookings/:id/deposits", paymentUpload.single("screenshot"), async (req, res) => {
+app.post("/api/bookings/:id/deposits", uploadPaymentScreenshot, async (req, res) => {
   try {
     const authUser = await requireUser(req, res, ["DRIVER"]);
     if (!authUser) return;
