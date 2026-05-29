@@ -1480,7 +1480,7 @@ app.post("/api/driver/bookings", async (req, res) => {
         where: { carId_driverId: { carId, driverId: authUser.id } },
       });
 
-      const app = existing
+      return existing
         ? await tx.carApplication.update({
             where: { id: existing.id },
             data: {
@@ -1512,20 +1512,20 @@ app.post("/api/driver/bookings", async (req, res) => {
               owner: { include: { ownerProfile: true } },
             },
           });
+    });
 
-      await tx.notification.create({
-        data: {
-          id: crypto.randomUUID(),
-          receiverId: car.ownerId,
-          triggerUserId: authUser.id,
-          title: "New car borrow request",
-          message: `${driver.name} applied to borrow your ${car.brand} ${car.model}.`,
-          type: "booking_request",
-          entityId: app.id,
-        },
-      });
-
-      return app;
+    prisma.notification.create({
+      data: {
+        id: crypto.randomUUID(),
+        receiverId: car.ownerId,
+        triggerUserId: authUser.id,
+        title: "New car borrow request",
+        message: `${driver.name} applied to borrow your ${car.brand} ${car.model}.`,
+        type: "booking_request",
+        entityId: application.id,
+      },
+    }).catch((notificationError) => {
+      console.error("Create booking request notification error:", notificationError);
     });
 
     return res.status(201).json({ data: serializeBooking(application) });
