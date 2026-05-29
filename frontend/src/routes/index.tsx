@@ -28,6 +28,7 @@ import { OwnerCarsPage } from '@/features/owner/OwnerCarsPage'
 import { OwnerCarFormPage } from '@/features/owner/OwnerCarFormPage'
 import { OwnerBookingsPage } from '@/features/owner/OwnerBookingsPage'
 import { OwnerEarningsPage } from '@/features/owner/OwnerEarningsPage'
+import { OwnerPaymentsPage } from '@/features/owner/OwnerPaymentsPage'
 import { OwnerDepositsPage } from '@/features/owner/OwnerDepositsPage'
 import { OwnerReviewsPage } from '@/features/owner/OwnerReviewsPage'
 import { OwnerDisputesPage } from '@/features/owner/OwnerDisputesPage'
@@ -46,6 +47,7 @@ import { KYCPage } from '@/features/driver/KYCPage'
 import { DriverDisputesPage } from '@/features/driver/DriverDisputesPage'
 import { DriverReviewsPage } from '@/features/driver/DriverReviewsPage'
 import { DriverProfilePage } from '@/features/driver/DriverProfilePage'
+import { AgreementFormPage } from '@/features/shared/AgreementFormPage'
 
 // Admin pages
 import { AdminDashboardPage } from '@/features/admin/AdminDashboardPage'
@@ -99,11 +101,13 @@ export const router = createBrowserRouter([
       { path: 'cars/:id/edit', element: <OwnerCarFormPage /> },
       { path: 'bookings', element: <OwnerBookingsPage /> },
       { path: 'earnings', element: <OwnerEarningsPage /> },
+      { path: 'payments', element: <OwnerPaymentsPage /> },
       { path: 'deposits', element: <OwnerDepositsPage /> },
       { path: 'reviews', element: <OwnerReviewsPage /> },
       { path: 'disputes', element: <OwnerDisputesPage /> },
       { path: 'documents', element: <OwnerDocumentsPage /> },
       { path: 'profile', element: <OwnerProfilePage /> },
+      { path: 'agreements/:id', element: <AgreementFormPage /> },
     ],
   },
 
@@ -126,6 +130,7 @@ export const router = createBrowserRouter([
       { path: 'disputes', element: <DriverDisputesPage /> },
       { path: 'reviews', element: <DriverReviewsPage /> },
       { path: 'profile', element: <DriverProfilePage /> },
+      { path: 'agreements/:id', element: <AgreementFormPage /> },
     ],
   },
 
@@ -148,6 +153,7 @@ export const router = createBrowserRouter([
       { path: 'deposits', element: <AdminDepositsPage /> },
       { path: 'audit-log', element: <AdminAuditLogPage /> },
       { path: 'notifications', element: <AdminNotificationsPage /> },
+      { path: 'agreements/:id', element: <AgreementFormPage /> },
     ],
   },
 

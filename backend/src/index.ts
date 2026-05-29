@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -14,10 +15,28 @@ import contactRouter from '../routes/contactRoutes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
+const paymentUploadDir = path.resolve(__dirname, '../uploads/payments');
+fs.mkdirSync(paymentUploadDir, { recursive: true });
+const paymentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, paymentUploadDir),
+    filename: (_req, file, cb) => {
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, "_");
+      cb(null, `${uniqueId}_${safeName}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+const allowedOrigins = new Set([
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+]);
 
 // Security headers
 app.use(helmet({
@@ -26,7 +45,14 @@ app.use(helmet({
 
 // Enable CORS
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
   credentials: true,
 }));
 
@@ -47,6 +73,7 @@ app.use('/api/', rateLimit({
 
 // Serve uploaded KYC documents as static files
 app.use('/uploads/kyc', express.static(path.resolve(__dirname, '../uploads/kyc')));
+app.use('/uploads/payments', express.static(paymentUploadDir));
 
 app.use("/api", authRouter);
 
