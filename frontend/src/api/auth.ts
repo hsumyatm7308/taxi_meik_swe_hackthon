@@ -25,21 +25,21 @@ export const authApi = {
       password: data.password,
     })
 
-    if (!response.data?.user || !response.data?.accessToken) {
+    if (!response.data?.user) {
       throw new Error(response.data?.error || 'Login failed')
     }
 
     return {
       user: mapBackendUser(response.data.user),
-      token: response.data.accessToken,
+      token: '',
     }
   },
 
-  registerOwner: async (data: RegisterOwnerRequest): Promise<AuthResponse> => {
+  registerOwner: async (_data: RegisterOwnerRequest): Promise<AuthResponse> => {
     throw new Error('Use registerRequest and registerVerify flow instead.')
   },
 
-  registerDriver: async (data: RegisterDriverRequest): Promise<AuthResponse> => {
+  registerDriver: async (_data: RegisterDriverRequest): Promise<AuthResponse> => {
     throw new Error('Use registerRequest and registerVerify flow instead.')
   },
 
@@ -63,41 +63,13 @@ export const authApi = {
   },
 
   me: async (): Promise<AuthResponse> => {
-    // If a logout just happened, avoid automatic refresh which can immediately re-authenticate
-    try {
-      if (typeof window !== 'undefined' && sessionStorage.getItem('skip_refresh') === '1') {
-        // consume the flag and behave as unauthenticated without attempting refresh
-        sessionStorage.removeItem('skip_refresh')
-        throw new Error('Skip refresh after logout')
-      }
-    } catch (e) {
-      // ignore sessionStorage errors in non-browser environments
+    const response = await apiClient.get('/auth/session')
+    if (!response.data?.user) {
+      throw new Error('Not authenticated')
     }
-
-    try {
-      const response = await apiClient.get('/auth/session')
-      if (!response.data?.user) {
-        throw new Error('Not authenticated')
-      }
-      return {
-        user: mapBackendUser(response.data.user),
-        token: response.data.session?.token || response.data.session?.accessToken || '',
-      }
-    } catch (error: any) {
-      const status = error?.response?.status
-      if (status !== 401) {
-        throw error
-      }
-
-      const refreshed = await apiClient.post('/auth/refresh')
-      if (!refreshed.data?.user) {
-        throw new Error('Not authenticated')
-      }
-
-      return {
-        user: mapBackendUser(refreshed.data.user),
-        token: refreshed.data.session?.token || refreshed.data.accessToken || '',
-      }
+    return {
+      user: mapBackendUser(response.data.user),
+      token: '',
     }
   },
 

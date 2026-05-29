@@ -63,7 +63,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: <PublicLayout />,
     children: [
-      { index: true, element: <LandingPage /> },
+      { index: true, element: <GuestRoute><LandingPage /></GuestRoute> },
       { path: 'about', element: <AboutPage /> },
       { path: 'contact', element: <ContactPage /> },
       { path: 'faq', element: <FAQPage /> },
