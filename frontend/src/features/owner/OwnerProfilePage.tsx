@@ -12,11 +12,13 @@ import { useAuth, useToast } from '@/providers'
 import { usersApi } from '@/api'
 import { getInitials } from '@/utils/format'
 import { AgreementListCard } from '@/components/shared/AgreementListCard'
+import { Camera } from 'lucide-react'
 
 export function OwnerProfilePage() {
   const { user, updateUser } = useAuth()
   const { addToast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -36,6 +38,26 @@ export function OwnerProfilePage() {
     }
   }
 
+  const handleProfilePhoto = async (file?: File) => {
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please upload an image file', 'error')
+      return
+    }
+
+    try {
+      setPhotoUploading(true)
+      const updated = await usersApi.uploadProfilePhoto(file)
+      updateUser(updated)
+      addToast('Profile photo updated', 'success')
+    } catch (err: any) {
+      addToast(err.response?.data?.error || err.response?.data?.message || 'Photo upload failed', 'error')
+    } finally {
+      setPhotoUploading(false)
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Profile</h1>
@@ -44,13 +66,36 @@ export function OwnerProfilePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-4">
-              <Avatar className="w-16 h-16">
-                <AvatarImage src={user?.profile_photo_url || ''} />
-                <AvatarFallback className="text-lg">{user ? getInitials(user.name) : '?'}</AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-16 h-16">
+                  <AvatarImage src={user?.profile_photo_url || ''} />
+                  <AvatarFallback className="text-lg">{user ? getInitials(user.name) : '?'}</AvatarFallback>
+                </Avatar>
+                <input
+                  id="owner-profile-photo"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    void handleProfilePhoto(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                  disabled={photoUploading}
+                  onClick={() => document.getElementById('owner-profile-photo')?.click()}
+                  aria-label="Upload profile photo"
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </div>
               <div>
                 <CardTitle>{user?.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">{user?.email}</p>
+                {photoUploading && <p className="text-xs text-muted-foreground mt-1">Uploading photo...</p>}
               </div>
             </div>
           </CardHeader>

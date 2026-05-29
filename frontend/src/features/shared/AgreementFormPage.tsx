@@ -197,8 +197,8 @@ export function AgreementFormPage() {
       const data = await paymentsApi.submitPayment(id, formData)
       setPayment(data)
       addToast('Payment submitted for review', 'success')
-    } catch {
-      addToast('Payment upload failed', 'error')
+    } catch (error: any) {
+      addToast(error?.response?.data?.error || error?.response?.data?.message || 'Payment upload failed', 'error')
     } finally {
       setPaymentUploading(false)
     }

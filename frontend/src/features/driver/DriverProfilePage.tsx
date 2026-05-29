@@ -23,13 +23,15 @@ import {
   EyeOff, 
   Save, 
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Camera
 } from 'lucide-react';
 
 export function DriverProfilePage() {
   const { user, updateUser } = useAuth();
   const { addToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -80,6 +82,26 @@ export function DriverProfilePage() {
     }
   };
 
+  const handleProfilePhoto = async (file?: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      addToast('Please upload an image file', 'error');
+      return;
+    }
+
+    try {
+      setPhotoUploading(true);
+      const updated = await usersApi.uploadProfilePhoto(file);
+      updateUser(updated);
+      addToast('Profile photo updated', 'success');
+    } catch (err: any) {
+      addToast(err.response?.data?.error || err.response?.data?.message || 'Photo upload failed', 'error');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   const status = user?.verification_status || 'unverified';
   const statusLabel = VERIFICATION_LABELS[status] || status;
   const statusColor = VERIFICATION_COLORS[status] || 'bg-gray-100 text-gray-700';
@@ -112,16 +134,39 @@ export function DriverProfilePage() {
             <div className="h-24 bg-gradient-to-r from-sky-400 to-indigo-500" />
             <CardContent className="relative pt-0 pb-6 text-center">
               <div className="flex justify-center -mt-12 mb-4">
-                <Avatar className="w-24 h-24 border-4 border-white dark:border-slate-950 shadow-xl">
-                  <AvatarImage src={user?.profile_photo_url || ''} />
-                  <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-slate-800 to-slate-900 text-white">
-                    {user ? getInitials(user.name) : '?'}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="w-24 h-24 border-4 border-white dark:border-slate-950 shadow-xl">
+                    <AvatarImage src={user?.profile_photo_url || ''} />
+                    <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-slate-800 to-slate-900 text-white">
+                      {user ? getInitials(user.name) : '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <input
+                    id="driver-profile-photo"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      void handleProfilePhoto(event.target.files?.[0]);
+                      event.target.value = '';
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="absolute bottom-0 right-0 h-9 w-9 rounded-full shadow-lg"
+                    disabled={photoUploading}
+                    onClick={() => document.getElementById('driver-profile-photo')?.click()}
+                    aria-label="Upload profile photo"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <h2 className="text-xl font-bold text-slate-950 dark:text-white">{user?.name}</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{user?.email}</p>
+              {photoUploading && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Uploading photo...</p>}
               
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-400">

@@ -1,4 +1,4 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, NavLink } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -7,6 +7,13 @@ import { APP_NAME } from "@/constants";
 import { useAuth } from "@/providers";
 import { getDashboardPath } from "@/utils/auth";
 import Logo from "@/assets/Logo.svg";
+
+const publicNavItems = [
+  { label: "Home", path: "/", end: true },
+  { label: "About", path: "/about" },
+  { label: "Contact", path: "/contact" },
+  { label: "FAQ", path: "/faq" },
+];
 
 export function PublicLayout() {
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -39,31 +46,24 @@ export function PublicLayout() {
             {APP_NAME}
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              to="/"
-              className="text-sm text-white/70 hover:text-white transition-colors"
-            >
-              Home
-            </Link>
-            <Link
-              to="/about"
-              className="text-sm text-white/70 hover:text-white transition-colors"
-            >
-              About
-            </Link>
-            <Link
-              to="/contact"
-              className="text-sm text-white/70 hover:text-white transition-colors"
-            >
-              Contact
-            </Link>
-            <Link
-              to="/faq"
-              className="text-sm text-white/70 hover:text-white transition-colors"
-            >
-              FAQ
-            </Link>
+          <nav className="hidden md:flex items-center gap-2">
+            {publicNavItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                className={({ isActive }) =>
+                  [
+                    "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-white/15 text-amber-300 shadow-inner shadow-white/5"
+                      : "text-white/70 hover:bg-white/10 hover:text-white",
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -93,10 +93,14 @@ export function PublicLayout() {
           </div>
 
           <button
-            className="md:hidden text-white"
+            type="button"
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             onClick={() => setMobileMenu(!mobileMenu)}
+            aria-label={mobileMenu ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenu}
+            aria-controls="mobile-public-nav"
           >
-            {mobileMenu ? <X /> : <Menu />}
+            {mobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
       </header>
@@ -131,48 +135,37 @@ export function PublicLayout() {
             >
               <div className="flex justify-end mb-8">
                 <button
+                  type="button"
                   onClick={() => setMobileMenu(false)}
-                  className="text-white/60 hover:text-white transition"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  aria-label="Close navigation menu"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              <nav className="space-y-4">
-                <Link
-                  to="/"
-                  className="block text-sm text-white/70 hover:text-white transition"
-                  onClick={() => setMobileMenu(false)}
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/about"
-                  className="block text-sm text-white/70 hover:text-white transition"
-                  onClick={() => setMobileMenu(false)}
-                >
-                  About
-                </Link>
-                <Link
-                  to="/contact"
-                  className="block text-sm text-white/70 hover:text-white transition"
-                  onClick={() => setMobileMenu(false)}
-                >
-                  Contact
-                </Link>
-                <Link
-                  to="/faq"
-                  className="block text-sm text-white/70 hover:text-white transition"
-                  onClick={() => setMobileMenu(false)}
-                >
-                  FAQ
-                </Link>
+              <nav id="mobile-public-nav" className="space-y-2">
+                {publicNavItems.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      [
+                        "block rounded-lg px-3 py-2 text-sm font-medium transition",
+                        isActive
+                          ? "bg-white/15 text-amber-300"
+                          : "text-white/70 hover:bg-white/10 hover:text-white",
+                      ].join(" ")
+                    }
+                    onClick={() => setMobileMenu(false)}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
               </nav>
               <div className="mt-6 space-y-2">
                 {isAuthenticated && user ? (
-                  <Link
-                    to={getDashboardPath(user.role)}
-                    onClick={() => setMobileMenu(false)}
-                  >
+                  <Link to={getDashboardPath(user.role)} onClick={() => setMobileMenu(false)}>
                     <Button className="w-full bg-white text-slate-950 hover:bg-white/90 shadow-lg">
                       Dashboard
                     </Button>

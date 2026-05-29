@@ -13,6 +13,7 @@ interface AuthContextType {
   registerDriver: (data: RegisterDriverRequest) => Promise<void>
   logout: () => Promise<void>
   updateUser: (user: User) => void
+  refreshUser: () => Promise<User>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -71,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updatedUser)
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const currentSession = await authApi.me()
+    setUser(currentSession.user)
+    return currentSession.user
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
@@ -82,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         registerDriver,
         logout,
         updateUser,
+        refreshUser,
       }}
     >
       {children}

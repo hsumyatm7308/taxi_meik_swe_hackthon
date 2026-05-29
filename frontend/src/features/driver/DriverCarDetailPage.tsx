@@ -16,7 +16,7 @@ import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { useAuth, useToast } from '@/providers'
 import { bookingsApi, carsApi } from '@/api'
 import { formatCurrency, formatDate } from '@/utils/format'
-import type { Car } from '@/types'
+import type { Booking, Car } from '@/types'
 
 const KYC_REQUIRED = ['verified', 'trusted']
 
@@ -35,6 +35,7 @@ export function DriverCarDetailPage() {
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [applied, setApplied] = useState(false)
+  const [existingBooking, setExistingBooking] = useState<Booking | null>(null)
   const [applying, setApplying] = useState(false)
 
   const carBookings = useMemo<any[]>(() => [], [])
@@ -68,6 +69,32 @@ export function DriverCarDetailPage() {
     setImgIdx(0)
   }, [car?.id])
 
+  useEffect(() => {
+    const loadExistingBooking = async () => {
+      if (!id || !user) {
+        setExistingBooking(null)
+        setApplied(false)
+        return
+      }
+
+      try {
+        const res = await bookingsApi.getMyBookings()
+        const booking = res.data.find((item) => String(item.car_id) === String(id)) || null
+        const blocksNewApplication = booking
+          ? !['cancelled', 'completed'].includes(String(booking.status))
+          : false
+
+        setExistingBooking(blocksNewApplication ? booking : null)
+        setApplied(blocksNewApplication)
+      } catch {
+        setExistingBooking(null)
+        setApplied(false)
+      }
+    }
+
+    loadExistingBooking()
+  }, [id, user])
+
   if (loading) {
     return <LoadingSkeleton type="detail" count={3} />
   }
@@ -88,9 +115,10 @@ export function DriverCarDetailPage() {
 
     try {
       setApplying(true)
-      await bookingsApi.create(car.id, {
+      const booking = await bookingsApi.create(car.id, {
         driver_notes: `Borrow request for ${car.brand} ${car.model}`,
       })
+      setExistingBooking(booking)
       setApplied(true)
       setShowApply(false)
       addToast('Borrow request sent to the owner.', 'success')
@@ -104,6 +132,18 @@ export function DriverCarDetailPage() {
   const handleSubmitReview = () => {
     setShowReview(false)
   }
+
+  const applyLabel = applied
+    ? existingBooking?.status === 'accepted'
+      ? 'Request Accepted'
+      : existingBooking?.status === 'payment_pending'
+        ? 'Payment Pending'
+        : existingBooking?.status === 'active'
+          ? 'Rental Active'
+          : 'Application Pending'
+    : car.is_available
+      ? 'Apply to Rent'
+      : 'Unavailable'
 
   const detailContent = (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -224,8 +264,14 @@ export function DriverCarDetailPage() {
               </div>
 
               <Button className="w-full" size="lg" disabled={!car.is_available || applied || applying} onClick={() => setShowApply(true)}>
-                {applied ? 'Application Sent' : car.is_available ? 'Apply to Rent' : 'Unavailable'}
+                {applyLabel}
               </Button>
+
+              {existingBooking && (
+                <Button className="w-full" size="sm" variant="outline" onClick={() => navigate(`/driver/bookings/${existingBooking.id}`)}>
+                  View Booking
+                </Button>
+              )}
 
               {carBookings.length > 0 && (
                 <div>
