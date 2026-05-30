@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Save } from 'lucide-react'
+import { BadgeCheck, Camera, CarFront, FileText, Loader2, Save, WalletCards } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { KYCLock } from '@/components/shared/KYCLock'
@@ -49,6 +48,40 @@ const imageLabels = [
   { key: 'left_image', label: 'Left Image' },
   { key: 'right_image', label: 'Right Image' },
 ] as const
+
+function RequiredMark() {
+  return <span className="text-emerald-600">*</span>
+}
+
+function FieldLabel({ children, required = false }: { children: ReactNode; required?: boolean }) {
+  return (
+    <Label className="text-xs font-semibold text-slate-700">
+      {children} {required && <RequiredMark />}
+    </Label>
+  )
+}
+
+function SectionHeader({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-700">
+        {icon}
+      </div>
+      <div>
+        <h2 className="text-sm font-semibold text-slate-950">{title}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  )
+}
 
 function readFileData(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -150,7 +183,7 @@ function OwnerCarFormContent() {
     return true
   }
 
-  const onSubmit = async (event: React.FormEvent) => {
+  const onSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!validate()) return
 
@@ -180,45 +213,59 @@ function OwnerCarFormContent() {
   }
 
   if (initialLoading) {
-    return <div className="max-w-4xl mx-auto"><Card><CardContent className="p-6 text-sm text-muted-foreground">Loading car...</CardContent></Card></div>
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-muted-foreground">
+        Loading car...
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="w-4 h-4" /> Back
-      </button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold">{isEditing ? 'Edit Car' : 'Post Car'}</h1>
+          <p className="text-sm text-muted-foreground">
+            Add car details, rental terms, and clear vehicle photos for admin review.
+          </p>
+        </div>
+        <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+          <BadgeCheck className="h-4 w-4" />
+          Required fields are marked with <RequiredMark />
+        </div>
+      </div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{isEditing ? 'Edit Car' : 'Post Car'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={onSubmit} className="space-y-8">
+          <section className="space-y-4">
+            <SectionHeader
+              icon={<CarFront className="h-4 w-4" />}
+              title="Car Information"
+              description="Basic details shown to drivers."
+            />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <div className="space-y-2">
-                  <Label>Brand</Label>
+                  <FieldLabel required>Brand</FieldLabel>
                   <Input value={form.brand} onChange={(event) => setField('brand', event.target.value)} placeholder="Toyota" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Model</Label>
+                  <FieldLabel required>Model</FieldLabel>
                   <Input value={form.model} onChange={(event) => setField('model', event.target.value)} placeholder="Crown" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Year</Label>
+                  <FieldLabel>Year</FieldLabel>
                   <Input type="number" value={form.year} onChange={(event) => setField('year', event.target.value)} placeholder="2020" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Color</Label>
+                  <FieldLabel>Color</FieldLabel>
                   <Input value={form.color} onChange={(event) => setField('color', event.target.value)} placeholder="White" />
                 </div>
                 <div className="space-y-2">
-                  <Label>License Number</Label>
+                  <FieldLabel required>License Number</FieldLabel>
                   <Input value={form.license_number} onChange={(event) => setField('license_number', event.target.value)} placeholder="YGN-1234" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Fuel Type</Label>
+                  <FieldLabel required>Fuel Type</FieldLabel>
                   <Select value={form.fuel_type} onValueChange={(value) => setField('fuel_type', value)}>
                     <SelectTrigger><SelectValue placeholder="Select fuel type" /></SelectTrigger>
                     <SelectContent>
@@ -229,15 +276,29 @@ function OwnerCarFormContent() {
                   </Select>
                 </div>
               </div>
+          </section>
 
+          <section className="space-y-4 border-t border-slate-200 pt-6">
+            <SectionHeader
+              icon={<FileText className="h-4 w-4" />}
+              title="Ownership"
+              description="Reference information used for review."
+            />
               <div className="space-y-2">
-                <Label>Owner Book</Label>
+                <FieldLabel required>Owner Book</FieldLabel>
                 <Input value={form.owner_book} onChange={(event) => setField('owner_book', event.target.value)} placeholder="Owner book number or reference" />
               </div>
+          </section>
 
+          <section className="space-y-4 border-t border-slate-200 pt-6">
+            <SectionHeader
+              icon={<WalletCards className="h-4 w-4" />}
+              title="Rental Terms"
+              description="Set pricing and handoff preferences."
+            />
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label>Payment Type</Label>
+                  <FieldLabel required>Payment Type</FieldLabel>
                   <Select value={form.rental_payment_type} onValueChange={(value) => setField('rental_payment_type', value)}>
                     <SelectTrigger><SelectValue placeholder="Payment type" /></SelectTrigger>
                     <SelectContent>
@@ -248,7 +309,7 @@ function OwnerCarFormContent() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Rental Type</Label>
+                  <FieldLabel required>Rental Type</FieldLabel>
                   <Select value={form.rental_type} onValueChange={(value) => setField('rental_type', value)}>
                     <SelectTrigger><SelectValue placeholder="Rental type" /></SelectTrigger>
                     <SelectContent>
@@ -258,26 +319,33 @@ function OwnerCarFormContent() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Rental Period</Label>
+                  <FieldLabel>Rental Period</FieldLabel>
                   <Input value={form.rental_period} onChange={(event) => setField('rental_period', event.target.value)} placeholder="e.g. 3 months" />
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Rental Price (MMK)</Label>
-                  <Input type="number" value={form.rental_price} onChange={(event) => setField('rental_price', event.target.value)} placeholder="50000" />
+                  <FieldLabel required>Rental Price (MMK)</FieldLabel>
+                  <Input type="number" min="0" inputMode="numeric" value={form.rental_price} onChange={(event) => setField('rental_price', event.target.value)} placeholder="50000" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Deposit Amount (MMK)</Label>
-                  <Input type="number" value={form.deposit_amount} onChange={(event) => setField('deposit_amount', event.target.value)} placeholder="200000" />
+                  <FieldLabel>Deposit Amount (MMK)</FieldLabel>
+                  <Input type="number" min="0" inputMode="numeric" value={form.deposit_amount} onChange={(event) => setField('deposit_amount', event.target.value)} placeholder="200000" />
                 </div>
               </div>
+          </section>
 
+          <section className="space-y-4 border-t border-slate-200 pt-6">
+            <SectionHeader
+              icon={<Camera className="h-4 w-4" />}
+              title="Car Photos"
+              description="Upload all four sides of the car."
+            />
               <div className="grid gap-4 sm:grid-cols-2">
                 {imageLabels.map((image) => (
                   <div key={image.key} className="space-y-2">
-                    <Label>{image.label}</Label>
+                    <FieldLabel required>{image.label}</FieldLabel>
                     <FileUploader
                       label={`${images[image.key] ? 'Replace' : 'Upload'} ${image.label}`}
                       preview={images[image.key]}
@@ -287,17 +355,20 @@ function OwnerCarFormContent() {
                   </div>
                 ))}
               </div>
+          </section>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => navigate('/owner/cars')}>Cancel</Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Submitting...' : isEditing ? 'Update Car' : 'Submit Car'}
-                  <Save className="w-4 h-4" />
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <div className="sticky bottom-0 -mx-4 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/95 px-4 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between lg:-mx-6 lg:px-6">
+            <p className="text-xs text-muted-foreground">Submission goes to admin review before drivers can see the car.</p>
+            <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => navigate('/owner/cars')}>Cancel</Button>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? 'Submitting...' : isEditing ? 'Update Car' : 'Submit Car'}
+              {!loading && <Save className="w-4 h-4" />}
+            </Button>
+            </div>
+          </div>
+        </form>
       </motion.div>
     </div>
   )

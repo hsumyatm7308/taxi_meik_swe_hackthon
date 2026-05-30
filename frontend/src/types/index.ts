@@ -269,6 +269,10 @@ export interface Payment {
   method: PaymentMethod | null
   payer_role?: 'DRIVER' | 'OWNER'
   payment_purpose?: string
+  transfer_from_name?: string | null
+  transfer_to_name?: string | null
+  driver_name?: string | null
+  owner_name?: string | null
   commission_rate?: number
   commission_amount?: number
   transaction_id: string | null
@@ -459,9 +463,6 @@ export interface OwnerDashboardStats {
   active_rentals: number
   pending_bookings: number
   total_earnings: number
-  agency_commission_rate?: number
-  agency_profit?: number
-  driver_total_paid?: number
   owner_net_earning?: number
   monthly_earnings: { month: string; amount: number }[]
   recent_bookings: Booking[]

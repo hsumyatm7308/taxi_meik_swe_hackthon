@@ -57,7 +57,7 @@ function DocumentGrid({ driver, onLightbox }: { driver: KYCDriver; onLightbox: (
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
           {url ? (
             <div
-              className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-900 group cursor-zoom-in"
+              className="relative rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100 group cursor-zoom-in"
               onClick={() => onLightbox(url)}
             >
               <img src={url} alt={label} className="w-full h-full object-cover" />
@@ -66,7 +66,7 @@ function DocumentGrid({ driver, onLightbox }: { driver: KYCDriver; onLightbox: (
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 aspect-video flex items-center justify-center">
+            <div className="rounded-xl border-2 border-dashed border-slate-200 aspect-video flex items-center justify-center">
               <p className="text-xs text-muted-foreground">Not uploaded</p>
             </div>
           )}
@@ -79,7 +79,7 @@ function DocumentGrid({ driver, onLightbox }: { driver: KYCDriver; onLightbox: (
 // ─── Driver Info Strip ────────────────────────────────────────────────────────
 function DriverInfoStrip({ driver }: { driver: KYCDriver }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 text-sm">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm">
       <div className="flex items-center gap-2 text-muted-foreground">
         <User className="w-4 h-4 shrink-0" />
         <span className="font-medium text-foreground truncate">{driver.user.name}</span>
@@ -106,20 +106,20 @@ function DriverInfoStrip({ driver }: { driver: KYCDriver }) {
 function KycBadge({ status }: { status: string }) {
   if (status === 'APPROVED') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50">
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
         <CheckCircle2 className="w-3.5 h-3.5" /> Approved
       </span>
     )
   }
   if (status === 'REJECTED') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2.5 py-1 rounded-full border border-red-200/60 dark:border-red-800/50">
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50 px-2.5 py-1 rounded-full border border-red-200/60">
         <XCircle className="w-3.5 h-3.5" /> Rejected
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1 rounded-full border border-amber-200/50">
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/50">
       <Clock className="w-3.5 h-3.5" /> Pending Review
     </span>
   )
@@ -289,7 +289,7 @@ export function AdminVerificationsPage({ type }: Props) {
       <div className="space-y-6">
         <h1 className="text-2xl font-bold">{title}</h1>
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed border-slate-200">
             <ShieldCheck className="w-10 h-10 text-emerald-500 mb-3" />
             <p className="font-semibold">All clear!</p>
             <p className="text-sm text-muted-foreground">No pending {type} verifications.</p>
@@ -332,32 +332,22 @@ export function AdminVerificationsPage({ type }: Props) {
       <Tabs defaultValue="pending" onValueChange={(tab) => {
         if (tab === 'history' && !historyFetched) loadHistory()
       }}>
-        <TabsList className="mb-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl h-auto gap-1">
+        <TabsList className="mb-2">
           <TabsTrigger
             value="pending"
-            className={cn(
-              "gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all",
-              "text-slate-500 dark:text-slate-400",
-              "data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-rose-500/30",
-              "hover:text-rose-600 dark:hover:text-rose-400"
-            )}
+            className="gap-2"
           >
             <ClipboardList className="w-4 h-4" />
             Pending
             {pending.length > 0 && (
-              <span className="ml-1 bg-white/25 text-white text-[10px] font-bold rounded-full min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center leading-none">
+              <span className="ml-1 flex h-[1.1rem] min-w-[1.1rem] items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-bold leading-none text-primary">
                 {pending.length}
               </span>
             )}
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className={cn(
-              "gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all",
-              "text-slate-500 dark:text-slate-400",
-              "data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-indigo-500/30",
-              "hover:text-indigo-600 dark:hover:text-indigo-400"
-            )}
+            className="gap-2"
           >
             <History className="w-4 h-4" />
             History
@@ -376,9 +366,9 @@ export function AdminVerificationsPage({ type }: Props) {
             <LoadingSkeleton type="list" count={4} />
           ) : pending.length === 0 ? (
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}>
-              <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center">
-                  <ShieldCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <ShieldCheck className="w-8 h-8 text-emerald-600" />
                 </div>
                 <div>
                   <p className="font-semibold text-lg">All clear!</p>
@@ -392,14 +382,14 @@ export function AdminVerificationsPage({ type }: Props) {
                 {pending.map((driver) => (
                   <motion.div key={driver.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }}>
                     <Card
-                      className="hover:shadow-md transition-shadow cursor-pointer border border-slate-100 dark:border-slate-800"
+                      className="hover:shadow-md transition-shadow cursor-pointer border border-slate-100"
                       onClick={() => openReview(driver, false)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
-                              <User className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                              <User className="w-5 h-5 text-amber-600" />
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold truncate">{driver.user.name}</p>
@@ -437,7 +427,7 @@ export function AdminVerificationsPage({ type }: Props) {
           {historyLoading ? (
             <LoadingSkeleton type="list" count={4} />
           ) : history.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-3">
+            <div className="flex flex-col items-center justify-center py-24 rounded-2xl border-2 border-dashed border-slate-200 text-center space-y-3">
               <History className="w-10 h-10 text-muted-foreground/40" />
               <div>
                 <p className="font-semibold">No history yet</p>
@@ -449,7 +439,7 @@ export function AdminVerificationsPage({ type }: Props) {
               {history.map((driver) => (
                 <motion.div key={driver.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                   <Card
-                    className="hover:shadow-md transition-shadow cursor-pointer border border-slate-100 dark:border-slate-800"
+                    className="hover:shadow-md transition-shadow cursor-pointer border border-slate-100"
                     onClick={() => openReview(driver, true)}
                   >
                     <CardContent className="p-4">
@@ -458,12 +448,12 @@ export function AdminVerificationsPage({ type }: Props) {
                           <div className={cn(
                             "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
                             driver.kycStatus === 'APPROVED'
-                              ? "bg-emerald-100 dark:bg-emerald-950/30"
-                              : "bg-red-100 dark:bg-red-950/30"
+                              ? "bg-emerald-100"
+                              : "bg-red-100"
                           )}>
                             {driver.kycStatus === 'APPROVED'
-                              ? <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                              : <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400" />
+                              ? <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                              : <ShieldAlert className="w-5 h-5 text-red-600" />
                             }
                           </div>
                           <div className="min-w-0">
@@ -525,11 +515,11 @@ export function AdminVerificationsPage({ type }: Props) {
 
               {/* Rejection reason banner (history only) */}
               {isReadOnly && selectedDriver.kycStatus === 'REJECTED' && selectedDriver.nrcText && (
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200/60 dark:border-red-800/40 text-sm">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50 border border-red-200/60 text-sm">
                   <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold text-red-700 dark:text-red-400">Rejection Reason</p>
-                    <p className="text-red-600 dark:text-red-300 mt-0.5">{selectedDriver.nrcText}</p>
+                    <p className="font-semibold text-red-700">Rejection Reason</p>
+                    <p className="text-red-600 mt-0.5">{selectedDriver.nrcText}</p>
                   </div>
                 </div>
               )}
@@ -576,7 +566,7 @@ export function AdminVerificationsPage({ type }: Props) {
       <Dialog open={showRejectDialog} onOpenChange={(o) => { if (!o) { setShowRejectDialog(false); setRejectionReason('') } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <DialogTitle className="flex items-center gap-2 text-red-600">
               <ShieldAlert className="w-5 h-5" /> Reject KYC Submission
             </DialogTitle>
             <DialogDescription>

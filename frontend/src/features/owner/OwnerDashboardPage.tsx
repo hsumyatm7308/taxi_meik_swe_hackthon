@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   Car, CalendarCheck, DollarSign, Clock,
   ShieldAlert, ShieldEllipsis, XCircle,
-  ArrowRight, PlusCircle, List, Eye, Landmark,
+  ArrowRight,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import { useAuth } from '@/providers'
 import { isKycApproved, normalizeVerificationStatus } from '@/constants'
 import type { OwnerDashboardStats } from '@/types'
 import { formatCurrency, formatDate } from '@/utils/format'
+import { AIDriverSearchInterface } from './AIDriverSearchInterface'
 
 function KYCAlert({ status }: { status: string }) {
   const normalizedStatus = normalizeVerificationStatus(status)
@@ -65,17 +67,6 @@ function KYCAlert({ status }: { status: string }) {
   )
 }
 
-const DEFAULT_AGENCY_COMMISSION_RATE = 0.1
-
-function calculateBookingProfit(totalAmount: number, rate = DEFAULT_AGENCY_COMMISSION_RATE) {
-  const agencyProfit = Math.round(totalAmount * rate)
-  return {
-    driverPaid: totalAmount,
-    agencyProfit,
-    ownerEarning: totalAmount - agencyProfit,
-  }
-}
-
 export function OwnerDashboardPage() {
   const { user, updateUser } = useAuth()
   const [stats, setStats] = useState<OwnerDashboardStats | null>(null)
@@ -104,17 +95,7 @@ export function OwnerDashboardPage() {
   const loadStats = async () => {
     try {
       const data = await ownersApi.getDashboard()
-      const driverTotalPaid = data.driver_total_paid ?? data.recent_bookings.reduce((sum, booking) => sum + Number(booking.total_amount || 0), 0)
-      const agencyRate = data.agency_commission_rate ?? DEFAULT_AGENCY_COMMISSION_RATE
-      const agencyProfit = data.agency_profit ?? Math.round(driverTotalPaid * agencyRate)
-
-      setStats({
-        ...data,
-        agency_commission_rate: agencyRate,
-        driver_total_paid: driverTotalPaid,
-        agency_profit: agencyProfit,
-        owner_net_earning: data.owner_net_earning ?? driverTotalPaid - agencyProfit,
-      })
+      setStats(data)
     } catch {
       // handle
     } finally {
@@ -123,6 +104,8 @@ export function OwnerDashboardPage() {
   }
 
   if (loading) return <LoadingSkeleton type="detail" count={3} />
+
+  const monthlyRevenue = stats?.monthly_earnings ?? []
 
   return (
     <div className="space-y-6">
@@ -135,7 +118,8 @@ export function OwnerDashboardPage() {
 
       {user && <KYCAlert status={user.verification_status} />}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
         <StatsCard
           title="Total Cars"
           value={stats?.total_cars ?? 0}
@@ -153,51 +137,20 @@ export function OwnerDashboardPage() {
           icon={<Clock className="w-5 h-5" />}
         />
         <StatsCard
-          title="Owner Earning"
+          title="My Earnings"
           value={formatCurrency(stats?.owner_net_earning ?? stats?.total_earnings ?? 0)}
           icon={<DollarSign className="w-5 h-5" />}
-          description={`${Math.round((1 - (stats?.agency_commission_rate ?? DEFAULT_AGENCY_COMMISSION_RATE)) * 100)}% after commission`}
-        />
-        <StatsCard
-          title="Agency Profit"
-          value={formatCurrency(stats?.agency_profit ?? 0)}
-          icon={<Landmark className="w-5 h-5" />}
-          description={`${Math.round((stats?.agency_commission_rate ?? DEFAULT_AGENCY_COMMISSION_RATE) * 100)}% commission`}
+          description="From completed rentals"
         />
       </div>
 
-      {(stats?.driver_total_paid ?? 0) > 0 && (
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="mb-4">
-              <h2 className="font-semibold text-sm">Profit Split</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Calculated from driver payments using {Math.round((stats?.agency_commission_rate ?? DEFAULT_AGENCY_COMMISSION_RATE) * 100)}% agency commission.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Driver Paid</p>
-                <p className="text-lg font-semibold">{formatCurrency(stats?.driver_total_paid ?? 0)}</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Agency Gets</p>
-                <p className="text-lg font-semibold text-blue-600">{formatCurrency(stats?.agency_profit ?? 0)}</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Owner Gets</p>
-                <p className="text-lg font-semibold text-emerald-600">{formatCurrency(stats?.owner_net_earning ?? 0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] sm:gap-6">
 
-      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
+
         <Card>
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-sm">Recent Bookings</h2>
+              <h2 className="font-semibold text-sm">Car History</h2>
               <Link to="/owner/bookings">
                 <Button size="sm" variant="ghost" className="text gap-1">
                   View All <ArrowRight className="w-3 h-3" />
@@ -213,16 +166,8 @@ export function OwnerDashboardPage() {
                         {booking.car?.brand} {booking.car?.model}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
+                        {formatDate(booking.start_date)} 
                       </p>
-                      {(() => {
-                        const split = calculateBookingProfit(booking.total_amount, stats?.agency_commission_rate)
-                        return (
-                          <p className="text-xs text-muted-foreground">
-                            Owner {formatCurrency(split.ownerEarning)} / Agency {formatCurrency(split.agencyProfit)}
-                          </p>
-                        )
-                      })()}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm font-semibold">{formatCurrency(booking.total_amount)}</span>
@@ -236,55 +181,7 @@ export function OwnerDashboardPage() {
             )}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <h2 className="font-semibold text-sm mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <Link to="/owner/cars/new">
-                <Button variant="outline" className="w-full h-20 flex-col gap-1 text-xs">
-                  <PlusCircle className="w-5 h-5" />
-                  Post Car
-                </Button>
-              </Link>
-              <Link to="/owner/cars">
-                <Button variant="outline" className="w-full h-20 flex-col gap-1 text-xs">
-                  <List className="w-5 h-5" />
-                  My Posts
-                </Button>
-              </Link>
-              <Link to="/owner/bookings">
-                <Button variant="outline" className="w-full h-20 flex-col gap-1 text-xs">
-                  <Eye className="w-5 h-5" />
-                  View Bookings
-                </Button>
-              </Link>
-              <Link to="/owner/documents">
-                <Button variant="outline" className="w-full h-20 flex-col gap-1 text-xs">
-                  <ShieldAlert className="w-5 h-5" />
-                  KYC
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
-      {stats?.monthly_earnings && stats.monthly_earnings.length > 0 && (
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <h2 className="font-semibold text-sm mb-4">Monthly Earnings</h2>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-4">
-              {stats.monthly_earnings.map((m) => (
-                <div key={m.month} className="text-center p-2 rounded-lg bg-white">
-                  <p className="text-xs text-muted-foreground">{m.month}</p>
-                  <p className="text-sm font-semibold text-emerald-600">{formatCurrency(m.amount)}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

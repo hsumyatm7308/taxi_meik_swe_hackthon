@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Calendar, Car, User, FileText } from 'lucide-react'
+import { Calendar, Car, FileText } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,18 +19,18 @@ export function BookingCard({ booking, onView, actions }: BookingCardProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="hover:border-slate-300 hover:shadow-md transition-all">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
                 <Car className="w-6 h-6" />
               </div>
               <div>
-                <p className="font-medium">
+                <p className="font-semibold text-slate-950">
                   {booking.car ? `${booking.car.brand} ${booking.car.model}` : `Booking #${booking.id}`}
                 </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {formatDate(booking.start_date)} - {formatDate(booking.end_date)}

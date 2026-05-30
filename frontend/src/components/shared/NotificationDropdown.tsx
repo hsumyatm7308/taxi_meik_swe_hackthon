@@ -100,7 +100,7 @@ export function NotificationDropdown() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
+        className="relative text-slate-200 hover:bg-slate-800 hover:text-white"
         onClick={() => setOpen(!open)}
       >
         <Bell className="w-5 h-5" />
@@ -112,18 +112,18 @@ export function NotificationDropdown() {
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-card border rounded-xl shadow-lg z-50 max-h-96 overflow-hidden">
-          <div className="p-3 border-b flex items-center justify-between">
-            <h4 className="text-sm font-semibold">Notifications</h4>
+        <div className="absolute right-0 top-full z-50 mt-2 max-h-96 w-80 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-slate-100 shadow-xl shadow-slate-950/25">
+          <div className="flex items-center justify-between border-b border-slate-800 p-3">
+            <h4 className="text-sm font-semibold text-slate-100">Notifications</h4>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAllRead} className="text-xs text-primary hover:underline">
+              <button onClick={handleMarkAllRead} className="text-xs text-slate-300 hover:text-white hover:underline">
                 Mark all read
               </button>
             )}
           </div>
           <div className="overflow-y-auto max-h-80">
             {notifications.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
+              <div className="p-6 text-center text-sm text-slate-400">
                 No notifications
               </div>
             ) : (
@@ -131,11 +131,11 @@ export function NotificationDropdown() {
                 <button
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif)}
-                  className={`w-full text-left p-3 border-b last:border-0 hover:bg-muted/50 transition-colors ${!notif.is_read ? 'bg-primary/5' : ''}`}
+                  className={`w-full border-b border-slate-800 p-3 text-left transition-colors last:border-0 hover:bg-slate-900 ${!notif.is_read ? 'bg-slate-900/80' : ''}`}
                 >
-                  <p className="text-sm font-medium">{notif.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{notif.message}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{timeAgo(notif.created_at)}</p>
+                  <p className="text-sm font-medium text-slate-100">{notif.title}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{notif.message}</p>
+                  <p className="mt-1 text-xs text-slate-500">{timeAgo(notif.created_at)}</p>
                 </button>
               ))
             )}

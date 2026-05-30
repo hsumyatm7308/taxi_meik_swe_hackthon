@@ -208,14 +208,29 @@ export function serializeBooking(application: any) {
 
 export function serializePayment(payment: any) {
   if (!payment) return null;
+  const payerRole = payment.payer_role || "DRIVER";
+  const transferFromName =
+    payment.transfer_from_name ||
+    payment.payer_name ||
+    (payerRole === "OWNER" ? payment.owner_name : payment.driver_name) ||
+    null;
+  const transferToName =
+    payment.transfer_to_name ||
+    payment.payee_name ||
+    "Taxi Meik Swe Agency";
+
   return {
     id: payment.id,
     booking_id: payment.booking_id,
     user_id: payment.user_id,
     amount: Number(payment.amount || 0),
     method: payment.method,
-    payer_role: payment.payer_role || "DRIVER",
+    payer_role: payerRole,
     payment_purpose: payment.payment_purpose || "rental_payment",
+    transfer_from_name: transferFromName,
+    transfer_to_name: transferToName,
+    driver_name: payment.driver_name || null,
+    owner_name: payment.owner_name || null,
     commission_rate: Number(payment.commission_rate || 0),
     commission_amount: Number(payment.commission_amount || 0),
     transaction_id: payment.transaction_id,

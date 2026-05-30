@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle, Clock, FileCheck, Save, XCircle } from 'lucide-react'
+import { CheckCircle, Clock, FileCheck, Lock, Save, XCircle } from 'lucide-react'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -86,8 +86,17 @@ export function OwnerDocumentsPage() {
   }
 
   const handleSave = async () => {
+    const savedNrc = (profile?.nrc_text || profile?.nrc_number || '').trim()
+    const isApproved = normalizeVerificationStatus(profile?.admin_approval_status || user?.verification_status) === 'verified'
+
     if (!form.nrc_text.trim()) {
       addToast('NRC number is required', 'error')
+      return
+    }
+
+    if (isApproved && form.nrc_text.trim() !== savedNrc) {
+      setForm((current) => ({ ...current, nrc_text: savedNrc }))
+      addToast('Approved NRC number cannot be edited. Contact support to request a change.', 'error')
       return
     }
 
@@ -132,6 +141,7 @@ export function OwnerDocumentsPage() {
     : normalizeVerificationStatus(user?.verification_status)
   const banner = statusCopy[verificationStatus as keyof typeof statusCopy] || statusCopy.unverified
   const BannerIcon = banner.icon
+  const nrcLocked = verificationStatus === 'verified' || verificationStatus === 'trusted'
 
   return (
     <div className="space-y-6">
@@ -152,25 +162,38 @@ export function OwnerDocumentsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">KYC Information</CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base">KYC Information</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500">Approval</span>
+              <StatusBadge status={profileStatus(profile)} type="document" />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4">
             <div className="space-y-2">
-              <Label htmlFor="owner-nrc">NRC Number</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="owner-nrc">NRC Number</Label>
+                {nrcLocked && (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+                    <Lock className="h-3 w-3" /> Locked after approval
+                  </span>
+                )}
+              </div>
               <Input
                 id="owner-nrc"
                 value={form.nrc_text}
                 onChange={(event) => setForm((current) => ({ ...current, nrc_text: event.target.value }))}
                 placeholder="12/ABC(N)123456"
+                disabled={nrcLocked}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Approval Status</Label>
-              <div className="flex h-10 items-center">
-                <StatusBadge status={profileStatus(profile)} type="document" />
-              </div>
+              {nrcLocked && (
+                <p className="text-xs text-slate-500">
+                  Your NRC number was approved by admin and cannot be edited from this page.
+                </p>
+              )}
             </div>
           </div>
 
@@ -186,66 +209,79 @@ export function OwnerDocumentsPage() {
             />
           </div>
 
-          <Button type="button" onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save KYC Info'}
-          </Button>
+          <div className="border-t border-slate-200 pt-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-slate-950">NRC Photos</h3>
+              <p className="text-xs text-slate-500">Upload clear front and back photos of the NRC used above.</p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {OWNER_KYC_DOCUMENT_TYPES.map((doc) => {
+                const existing = getDoc(doc.key)
+                return (
+                  <motion.div
+                    key={doc.key}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h4 className="text-sm font-medium text-slate-900">{doc.label}</h4>
+                      <StatusBadge status={existing?.status || 'not_uploaded'} type="document" />
+                    </div>
+
+                    <div className="space-y-3">
+                      {existing?.file_url && (
+                        <img src={existing.file_url} alt={doc.label} className="h-36 w-full rounded-lg object-cover" />
+                      )}
+
+                      {existing?.status === 'approved' ? (
+                        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-600">
+                          <CheckCircle className="h-4 w-4" /> Approved
+                        </div>
+                      ) : existing?.status === 'rejected' ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                            <XCircle className="h-4 w-4" /> Rejected
+                          </div>
+                          {existing.admin_notes && <p className="text-xs text-muted-foreground">Reason: {existing.admin_notes}</p>}
+                          <FileUploader
+                            label={`Re-upload ${doc.label}`}
+                            onUpload={(file) => handleUpload(doc.key, file)}
+                            uploading={uploading === doc.key}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          {existing?.status === 'pending' && (
+                            <div className="flex items-center gap-2 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-600">
+                              <Clock className="h-4 w-4" /> Under review
+                            </div>
+                          )}
+                          {!existing?.file_url && (
+                            <FileUploader
+                              label={`Upload ${doc.label}`}
+                              onUpload={(file) => handleUpload(doc.key, file)}
+                              uploading={uploading === doc.key}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 flex justify-end border-t border-slate-200 pt-4">
+              <Button type="button" onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4" />
+                {saving ? 'Saving...' : 'Save KYC Info'}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {OWNER_KYC_DOCUMENT_TYPES.map((doc) => {
-          const existing = getDoc(doc.key)
-          return (
-            <motion.div key={doc.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <CardTitle className="text-sm font-medium">{doc.label}</CardTitle>
-                    <StatusBadge status={existing?.status || 'not_uploaded'} type="document" />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {existing?.file_url && (
-                    <img src={existing.file_url} alt={doc.label} className="h-36 w-full rounded-lg object-cover" />
-                  )}
-
-                  {existing?.status === 'approved' ? (
-                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-600">
-                      <CheckCircle className="h-4 w-4" /> Approved
-                    </div>
-                  ) : existing?.status === 'rejected' ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                        <XCircle className="h-4 w-4" /> Rejected
-                      </div>
-                      {existing.admin_notes && <p className="text-xs text-muted-foreground">Reason: {existing.admin_notes}</p>}
-                      <FileUploader
-                        label={`Re-upload ${doc.label}`}
-                        onUpload={(file) => handleUpload(doc.key, file)}
-                        uploading={uploading === doc.key}
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      {existing?.status === 'pending' && (
-                        <div className="flex items-center gap-2 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-600">
-                          <Clock className="h-4 w-4" /> Under review
-                        </div>
-                      )}
-                      <FileUploader
-                        label={`${existing?.file_url ? 'Replace' : 'Upload'} ${doc.label}`}
-                        onUpload={(file) => handleUpload(doc.key, file)}
-                        uploading={uploading === doc.key}
-                      />
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          )
-        })}
-      </div>
     </div>
   )
 }

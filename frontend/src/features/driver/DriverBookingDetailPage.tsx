@@ -1,24 +1,29 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Calendar, DollarSign, Car, User, Shield, AlertTriangle, Star, Camera, QrCode } from 'lucide-react'
+import { ArrowLeft, Calendar, Car, DollarSign, Mail, Phone, Shield, Star, User, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { PAYMENT_METHODS } from '@/constants'
-import { bookingsApi, paymentsApi, depositsApi, damageReportsApi, disputesApi, reviewsApi } from '@/api'
-import { useAuth, useToast } from '@/providers'
-import type { Booking, Payment, Deposit } from '@/types'
+import { bookingsApi, paymentsApi, depositsApi } from '@/api'
+import { useToast } from '@/providers'
+import type { Booking } from '@/types'
 import { formatDate, formatCurrency } from '@/utils/format'
+
+function canCancelDriverBooking(booking: Booking) {
+  const paymentStatus = booking.payment_status || booking.payment?.status || 'incomplete'
+  const paymentSuccessful = paymentStatus === 'confirmed' || !!booking.payment?.confirmed_at || !!booking.payment?.paid_at
+
+  return ['requested', 'accepted'].includes(booking.status) && !paymentSuccessful
+}
 
 export function DriverBookingDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { addToast } = useToast()
   const [booking, setBooking] = useState<Booking | null>(null)
   const [loading, setLoading] = useState(true)
@@ -115,70 +120,93 @@ export function DriverBookingDetailPage() {
   const depositStatus = booking.deposit_status || booking.deposit?.status || 'incomplete'
   const agreementComplete = !!booking.owner_agreement_agreed_at && !!booking.driver_agreement_agreed_at
   const canSubmitPayment = booking.status === 'accepted' && agreementComplete && ['incomplete', 'failed'].includes(paymentStatus)
+  const canCancel = canCancelDriverBooking(booking)
+
+  const carName = booking.car ? `${booking.car.brand} ${booking.car.model}` : `Car #${booking.car_id}`
+  const ownerName = booking.owner?.name || `Owner #${booking.owner_id}`
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground">
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Booking #{booking.id}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">{booking.car?.brand} {booking.car?.model}</p>
-              </div>
-              <StatusBadge status={booking.status} type="booking" />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Owner</p>
-                <p className="font-medium">{booking.owner?.name || 'N/A'}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Total Amount</p>
-                <p className="font-semibold text-primary">{formatCurrency(booking.total_amount)}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Start Date</p>
-                <p className="font-medium">{formatDate(booking.start_date)}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">End Date</p>
-                <p className="font-medium">{formatDate(booking.end_date)}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Payment Status</p>
-                <div className="mt-1">
-                  <StatusBadge status={paymentStatus} type="payment" />
+        <Card className="overflow-hidden border-slate-200 bg-white shadow-sm">
+          <CardContent className="p-0">
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <Car className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-2xl font-bold text-slate-950">Booking #{booking.id}</h1>
+                      <StatusBadge status={booking.status} type="booking" />
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{carName}</p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 lg:min-w-48 lg:text-right">
+                  <p className="text-xs font-medium uppercase text-emerald-700">Total amount</p>
+                  <p className="mt-1 text-2xl font-semibold text-emerald-950">{formatCurrency(booking.total_amount)}</p>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-xs text-muted-foreground">Deposit Status</p>
-                <div className="mt-1">
-                  <StatusBadge status={depositStatus} type="deposit" />
-                </div>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <BookingInfoItem icon={<User className="h-4 w-4" />} label="Owner" value={ownerName} />
+                <BookingInfoItem icon={<Calendar className="h-4 w-4" />} label="Start date" value={formatDate(booking.start_date)} />
+                <BookingInfoItem icon={<Calendar className="h-4 w-4" />} label="End date" value={formatDate(booking.end_date)} />
+                <BookingInfoItem icon={<Car className="h-4 w-4" />} label="Car" value={carName} />
+                <BookingInfoItem icon={<DollarSign className="h-4 w-4" />} label="Payment" value={<StatusBadge status={paymentStatus} type="payment" />} />
+                <BookingInfoItem icon={<Shield className="h-4 w-4" />} label="Deposit" value={<StatusBadge status={depositStatus} type="deposit" />} />
               </div>
+
+              {(booking.owner?.phone || booking.owner?.email) && (
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-950">Owner Contact</p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                    {booking.owner?.phone && <span className="flex items-center gap-1"><Phone className="h-4 w-4 text-slate-500" /> {booking.owner.phone}</span>}
+                    {booking.owner?.email && <span className="flex items-center gap-1"><Mail className="h-4 w-4 text-slate-500" /> {booking.owner.email}</span>}
+                  </div>
+                </div>
+              )}
+
+              {booking.driver_notes && (
+                <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <p className="mb-1 text-xs font-medium uppercase text-slate-500">Notes</p>
+                  {booking.driver_notes}
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {booking.status === 'requested' && (
+            <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge status={booking.status} type="booking" />
+                <StatusBadge status={paymentStatus} type="payment" />
+                <StatusBadge status={depositStatus} type="deposit" />
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+              {canCancel && (
                 <Button variant="destructive" onClick={() => setCancelOpen(true)}>Cancel Booking</Button>
               )}
               {canSubmitPayment && !showPaymentForm && (
-                <Button onClick={() => setShowPaymentForm(true)}><DollarSign className="w-4 h-4 mr-2" /> Submit Payment</Button>
+                <Button onClick={() => setShowPaymentForm(true)}><DollarSign className="w-4 h-4" /> Submit Payment</Button>
               )}
               {paymentStatus === 'confirmed' && depositStatus === 'incomplete' && !showDepositForm && (
-                <Button onClick={() => setShowDepositForm(true)}><Shield className="w-4 h-4 mr-2" /> Submit Deposit</Button>
+                <Button onClick={() => setShowDepositForm(true)}><Shield className="w-4 h-4" /> Submit Deposit</Button>
               )}
               {booking.status === 'completed' && (
-                <Button onClick={() => navigate(`/driver/reviews?booking=${booking.id}`)}><Star className="w-4 h-4 mr-2" /> Leave Review</Button>
+                <Button onClick={() => navigate(`/driver/reviews?booking=${booking.id}`)}><Star className="w-4 h-4" /> Leave Review</Button>
               )}
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
             {showPaymentForm && (
               <Card>
@@ -212,16 +240,6 @@ export function DriverBookingDetailPage() {
               </Card>
             )}
 
-            {booking.driver_notes && (
-              <div>
-                <p className="text-sm font-medium">Notes</p>
-                <p className="text-sm text-muted-foreground">{booking.driver_notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-
       <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
@@ -231,6 +249,28 @@ export function DriverBookingDetailPage() {
         confirmLabel="Cancel Booking"
         onConfirm={handleCancel}
       />
+    </div>
+  )
+}
+
+function BookingInfoItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="flex gap-3 rounded-lg border border-slate-200 bg-white p-3">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <div className="mt-1 break-words text-sm font-semibold text-slate-950">{value}</div>
+      </div>
     </div>
   )
 }

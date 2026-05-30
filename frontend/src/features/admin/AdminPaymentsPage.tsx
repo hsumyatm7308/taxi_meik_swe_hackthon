@@ -100,6 +100,14 @@ export function AdminPaymentsPage() {
                             <p className="text-sm text-muted-foreground capitalize">
                               {payment.method} &middot; {payment.payer_role || 'DRIVER'} &middot; Booking #{payment.booking_id} &middot; {formatDate(payment.paid_at)}
                             </p>
+                            <p className="text-xs text-muted-foreground">
+                              From {payment.transfer_from_name || 'Unknown'} to {payment.transfer_to_name || 'Taxi Meik Swe Agency'}
+                            </p>
+                            {(payment.driver_name || payment.owner_name) && (
+                              <p className="text-xs text-muted-foreground">
+                                Driver {payment.driver_name || 'N/A'} &middot; Owner {payment.owner_name || 'N/A'}
+                              </p>
+                            )}
                             {payment.commission_rate !== undefined && (
                               <p className="text-xs text-muted-foreground">
                                 Commission {Math.round((payment.commission_rate || 0) * 100)}%

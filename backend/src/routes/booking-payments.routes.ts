@@ -29,7 +29,7 @@ router.post("/bookings/:id/payments", uploadPaymentScreenshot, async (req, res) 
         ownerApprovalStatus: "APPROVED",
         adminApprovalStatus: "APPROVED",
       },
-      include: { car: true },
+      include: { car: true, driver: true, owner: true },
     }) as any;
 
     if (!application) {
@@ -120,7 +120,7 @@ router.get("/bookings/:id/payments", async (req, res) => {
             ? { ownerId: authUser.id }
             : {}),
       },
-      include: { car: true },
+      include: { car: true, driver: true, owner: true },
     });
 
     if (!application) {
@@ -149,7 +149,7 @@ router.get("/driver/payments", async (req, res) => {
         ownerAgreementAgreedAt: { not: null },
         driverAgreementAgreedAt: { not: null },
       },
-      include: { car: true },
+      include: { car: true, driver: true, owner: true },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -184,7 +184,7 @@ router.get("/owner/payments", async (req, res) => {
         ownerAgreementAgreedAt: { not: null },
         driverAgreementAgreedAt: { not: null },
       },
-      include: { car: true },
+      include: { car: true, driver: true, owner: true },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -212,9 +212,19 @@ router.get("/admin/payments/pending", async (req, res) => {
     if (!admin) return;
 
     const payments = await prisma.$queryRaw<Array<any>>`
-      SELECT * FROM booking_payments
-      WHERE status = 'under_review'
-      ORDER BY paid_at ASC NULLS LAST, created_at ASC
+      SELECT
+        p.*,
+        payer.full_name AS transfer_from_name,
+        'Taxi Meik Swe Agency' AS transfer_to_name,
+        driver.full_name AS driver_name,
+        owner.full_name AS owner_name
+      FROM booking_payments p
+      INNER JOIN car_applications a ON a.id = p.booking_id
+      LEFT JOIN users payer ON payer.id = p.user_id
+      LEFT JOIN users driver ON driver.id = a.driver_id
+      LEFT JOIN users owner ON owner.id = a.owner_id
+      WHERE p.status = 'under_review'
+      ORDER BY p.paid_at ASC NULLS LAST, p.created_at ASC
     `;
 
     return res.json({ data: payments.map(serializePayment) });
@@ -240,7 +250,19 @@ router.post("/admin/payments/:id/confirm", async (req, res) => {
     `;
 
     const [payment] = await prisma.$queryRaw<Array<any>>`
-      SELECT * FROM booking_payments WHERE id = ${req.params.id}::uuid LIMIT 1
+      SELECT
+        p.*,
+        payer.full_name AS transfer_from_name,
+        'Taxi Meik Swe Agency' AS transfer_to_name,
+        driver.full_name AS driver_name,
+        owner.full_name AS owner_name
+      FROM booking_payments p
+      INNER JOIN car_applications a ON a.id = p.booking_id
+      LEFT JOIN users payer ON payer.id = p.user_id
+      LEFT JOIN users driver ON driver.id = a.driver_id
+      LEFT JOIN users owner ON owner.id = a.owner_id
+      WHERE p.id = ${req.params.id}::uuid
+      LIMIT 1
     `;
 
     if (!payment) {
@@ -270,7 +292,19 @@ router.post("/admin/payments/:id/reject", async (req, res) => {
     `;
 
     const [payment] = await prisma.$queryRaw<Array<any>>`
-      SELECT * FROM booking_payments WHERE id = ${req.params.id}::uuid LIMIT 1
+      SELECT
+        p.*,
+        payer.full_name AS transfer_from_name,
+        'Taxi Meik Swe Agency' AS transfer_to_name,
+        driver.full_name AS driver_name,
+        owner.full_name AS owner_name
+      FROM booking_payments p
+      INNER JOIN car_applications a ON a.id = p.booking_id
+      LEFT JOIN users payer ON payer.id = p.user_id
+      LEFT JOIN users driver ON driver.id = a.driver_id
+      LEFT JOIN users owner ON owner.id = a.owner_id
+      WHERE p.id = ${req.params.id}::uuid
+      LIMIT 1
     `;
 
     if (!payment) {

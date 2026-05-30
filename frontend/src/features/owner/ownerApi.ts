@@ -1,7 +1,7 @@
 import apiClient from '@/api/client'
 import type { Booking, Car, OwnerDashboardStats, PaginatedResponse } from '@/types'
 
-const AGENCY_COMMISSION_RATE = 0.1
+const OWNER_PAYOUT_RATE = 0.9
 
 function getMonthLabels() {
   const formatter = new Intl.DateTimeFormat('en-US', { month: 'short' })
@@ -13,17 +13,18 @@ function getMonthLabels() {
   })
 }
 
-function withProfit(stats: Omit<OwnerDashboardStats, 'agency_commission_rate' | 'agency_profit' | 'driver_total_paid' | 'owner_net_earning'>, bookings: Booking[] = stats.recent_bookings): OwnerDashboardStats {
+function calculateOwnerPayout(amount: number) {
+  return Math.round(amount * OWNER_PAYOUT_RATE)
+}
+
+function withOwnerEarnings(stats: Omit<OwnerDashboardStats, 'owner_net_earning'>, bookings: Booking[] = stats.recent_bookings): OwnerDashboardStats {
   const payableBookings = bookings.filter((booking) => booking.status !== 'requested' && booking.status !== 'cancelled')
-  const driverTotalPaid = payableBookings.reduce((sum, booking) => sum + Number(booking.total_amount || 0), 0)
-  const agencyProfit = Math.round(driverTotalPaid * AGENCY_COMMISSION_RATE)
+  const ownerEarning = payableBookings.reduce((sum, booking) => sum + calculateOwnerPayout(Number(booking.total_amount || 0)), 0)
 
   return {
     ...stats,
-    agency_commission_rate: AGENCY_COMMISSION_RATE,
-    driver_total_paid: driverTotalPaid,
-    agency_profit: agencyProfit,
-    owner_net_earning: driverTotalPaid - agencyProfit,
+    total_earnings: ownerEarning,
+    owner_net_earning: ownerEarning,
   }
 }
 
@@ -45,18 +46,16 @@ export const ownersApi = {
 
       const month = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(booking.created_at))
       if (monthlyTotals.has(month)) {
-        monthlyTotals.set(month, (monthlyTotals.get(month) || 0) + Number(booking.total_amount || 0))
+        monthlyTotals.set(month, (monthlyTotals.get(month) || 0) + calculateOwnerPayout(Number(booking.total_amount || 0)))
       }
     })
 
-    return withProfit({
+    return withOwnerEarnings({
       total_cars: cars.length,
       verified_cars: cars.filter((car) => car.status === 'verified' || car.admin_approval_status === 'APPROVED').length,
       active_rentals: bookings.filter((booking) => activeStatuses.has(String(booking.status))).length,
       pending_bookings: bookings.filter((booking) => booking.status === 'requested').length,
-      total_earnings: bookings
-        .filter((booking) => booking.status !== 'requested' && booking.status !== 'cancelled')
-        .reduce((sum, booking) => sum + Number(booking.total_amount || 0), 0),
+      total_earnings: 0,
       monthly_earnings: monthLabels.map((month) => ({ month, amount: monthlyTotals.get(month) || 0 })),
       recent_bookings: bookings.slice(0, 5),
     }, bookings)

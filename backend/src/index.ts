@@ -35,6 +35,7 @@ import ownerBookingsRouter from './routes/owner-bookings.routes.js';
 import adminBookingsRouter from './routes/admin-bookings.routes.js';
 import agreementsRouter from './routes/agreements.routes.js';
 import bookingPaymentsRouter from './routes/booking-payments.routes.js';
+import aiMatchingRouter from './routes/ai-matching.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,6 +108,7 @@ app.use("/api/owner/bookings", ownerBookingsRouter);
 app.use("/api/admin/bookings", adminBookingsRouter);
 app.use("/api/agreements", agreementsRouter);
 app.use("/api", bookingPaymentsRouter);
+app.use("/api", aiMatchingRouter);
 
 app.post("/api/bookings/:id/deposits", uploadPaymentScreenshot, async (req, res) => {
   try {

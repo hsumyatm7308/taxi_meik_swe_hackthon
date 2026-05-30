@@ -1,19 +1,35 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Fuel, Gauge } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { CalendarDays, ChevronLeft, ChevronRight, Fuel, Gauge, MapPin, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/utils/format'
 
 interface CarCardProps {
   car: any
   onView?: (id: string | number) => void
-  onBook?: (id: string | number) => void
+  onBook?: (id: string | number) => void | Promise<void>
+  bookingStageLabel?: string
+  onBookingStageClick?: () => void
 }
 
-export function CarCard({ car, onView, onBook }: CarCardProps) {
+export function CarCard({ car, onView, onBook, bookingStageLabel, onBookingStageClick }: CarCardProps) {
   const photos = car.photos || []
   const [imgIdx, setImgIdx] = useState(0)
+  const [applying, setApplying] = useState(false)
+  const displayRate = car.rental_price || car.daily_rate
+  const rateLabel = car.rental_payment_type ? `/${car.rental_payment_type.toLowerCase()}` : '/day'
+  const location = [car.city, car.location].filter(Boolean).join(', ') || 'Location not provided'
+
+  const handleApply = async () => {
+    if (!onBook || applying) return
+
+    try {
+      setApplying(true)
+      await onBook(car.id)
+    } finally {
+      setApplying(false)
+    }
+  }
 
   const prevImg = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -31,14 +47,22 @@ export function CarCard({ car, onView, onBook }: CarCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
-      className="group rounded-xl border bg-card shadow-sm hover:shadow-md transition-all overflow-hidden"
+      className="group flex h-full min-h-[520px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-950 shadow-sm transition-all hover:border-slate-300 hover:shadow-lg"
     >
-      <div className="relative h-48 overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         <img
           src={photos[imgIdx]?.url || '/placeholder-car.jpg'}
           alt={`${car.brand} ${car.model}`}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
+        <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+          {car.car_type || 'Car'}
+        </div>
+        {car.is_available && car.status === 'verified' && (
+          <div className="absolute right-3 top-3 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+            Available
+          </div>
+        )}
         {photos.length > 1 && (
           <>
             <button onClick={prevImg} className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors">
@@ -56,27 +80,63 @@ export function CarCard({ car, onView, onBook }: CarCardProps) {
         )}
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
         <div>
-          <h3 className="font-semibold text-base truncate">{car.brand} {car.model}</h3>
+          <h3 className="line-clamp-2 min-h-12 text-lg font-semibold leading-6 text-slate-950">
+            {car.brand} {car.model}
+          </h3>
+          <p className="mt-2 flex items-start gap-1.5 text-sm leading-5 text-slate-500">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="line-clamp-2">{location}</span>
+          </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Fuel className="w-3.5 h-3.5" /> {car.fuel_type}</span>
-          <span className="flex items-center gap-1"><Gauge className="w-3.5 h-3.5" /> {car.transmission}</span>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-600">
+          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
+            <Fuel className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span className="truncate capitalize">{car.fuel_type}</span>
+          </span>
+          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
+            <Gauge className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span className="truncate capitalize">{car.transmission}</span>
+          </span>
+          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
+            <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span className="truncate">{car.seat_capacity} seats</span>
+          </span>
+          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+            <span className="truncate">{car.year}</span>
+          </span>
         </div>
 
-        <div className="pt-2 border-t flex items-center justify-between">
-          <div>
-            <p className="text-base font-bold text-primary">{formatCurrency(car.daily_rate)}<span className="text-xs text-muted-foreground font-normal">/d</span></p>
+        {car.description && (
+          <div className="mt-4 min-h-10">
+            <p className="line-clamp-2 text-sm leading-5 text-slate-500">{car.description}</p>
+          </div>
+        )}
+
+        <div className="mt-auto space-y-4 border-t border-slate-200 pt-4">
+          <div className="min-w-0">
+            <p className="text-xl font-bold text-slate-950">
+              {formatCurrency(displayRate)}
+              <span className="text-xs font-normal text-slate-500">{rateLabel}</span>
+            </p>
             {car.deposit_amount > 0 && (
-              <p className="text-xs text-muted-foreground">Deposit: {formatCurrency(car.deposit_amount)}</p>
+              <p className="mt-1 text-xs text-slate-500">Deposit: {formatCurrency(car.deposit_amount)}</p>
             )}
           </div>
-          <div className="flex gap-2">
+
+          <div className="grid grid-cols-2 gap-2">
             <Button size="sm" variant="outline" onClick={() => onView?.(car.id)}>View</Button>
-            {car.is_available && car.status === 'verified' && (
-              <Button size="sm" onClick={() => onBook?.(car.id)}>Apply</Button>
+            {bookingStageLabel ? (
+              <Button size="sm" variant="outline" onClick={onBookingStageClick}>
+                {bookingStageLabel}
+              </Button>
+            ) : car.is_available && car.status === 'verified' && (
+              <Button size="sm" disabled={applying} onClick={handleApply}>
+                {applying ? 'Sending...' : 'Apply to Rent'}
+              </Button>
             )}
           </div>
         </div>

@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Users, Car, DollarSign, AlertTriangle, CalendarCheck, FileText, Shield } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Users, Car, DollarSign, AlertTriangle, CalendarCheck, Shield, ArrowRight, CreditCard } from 'lucide-react'
 import { StatsCard } from '@/components/shared/StatsCard'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { adminApi } from '@/api'
 import { formatCurrency, formatDateTime } from '@/utils/format'
@@ -29,88 +32,123 @@ export function AdminDashboardPage() {
   }
 
   if (loading) return <LoadingSkeleton type="detail" count={6} />
+  const totalPendingVerifications =
+    (stats?.pending_owner_verifications || 0) +
+    (stats?.pending_driver_verifications || 0) +
+    (stats?.pending_car_verifications || 0)
 
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Platform overview and management</p>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950">Admin Dashboard</h1>
+        <p className="mt-1 text-sm text-slate-500">Platform overview and management</p>
       </motion.div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
         <StatsCard title="Total Users" value={stats?.total_users || 0} icon={<Users className="w-5 h-5" />} />
         <StatsCard title="Total Revenue" value={formatCurrency(stats?.total_revenue || 0)} icon={<DollarSign className="w-5 h-5" />} />
         <StatsCard title="Active Bookings" value={stats?.active_bookings || 0} icon={<CalendarCheck className="w-5 h-5" />} />
-        <StatsCard title="Active Disputes" value={stats?.active_disputes || 0} icon={<AlertTriangle className="w-5 h-5" />} />
+        <StatsCard title="Pending Reviews" value={totalPendingVerifications} icon={<Shield className="w-5 h-5" />} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatsCard title="Pending Owner Verifications" value={stats?.pending_owner_verifications || 0} icon={<Shield className="w-5 h-5" />} />
-        <StatsCard title="Pending Driver Verifications" value={stats?.pending_driver_verifications || 0} icon={<Shield className="w-5 h-5" />} />
-        <StatsCard title="Pending Car Verifications" value={stats?.pending_car_verifications || 0} icon={<Car className="w-5 h-5" />} />
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Revenue Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] sm:gap-6">
+        <Card className="overflow-hidden border-slate-200">
+          <CardContent className="p-4 sm:p-6">
+            <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-950">Revenue Overview</h2>
+                <p className="text-xs text-muted-foreground">Platform revenue over recent months.</p>
+              </div>
+              <p className="text-lg font-semibold text-emerald-700">{formatCurrency(stats?.total_revenue || 0)}</p>
+            </div>
             {stats?.revenue_chart && stats.revenue_chart.length > 0 ? (
-              <div className="space-y-2">
-                {stats.revenue_chart.map((m) => (
-                  <div key={m.month} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{m.month}</span>
-                    <span className="font-medium">{formatCurrency(m.amount)}</span>
-                  </div>
-                ))}
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.revenue_chart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#64748b', fontSize: 12 }}
+                      tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
+                      width={44}
+                    />
+                    <Tooltip
+                      cursor={{ fill: '#ecfdf5' }}
+                      formatter={(value) => [formatCurrency(Number(value)), 'Revenue']}
+                      labelClassName="text-xs text-slate-500"
+                      contentStyle={{
+                        borderRadius: 8,
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 10px 24px rgb(15 23 42 / 0.08)',
+                      }}
+                    />
+                    <Bar dataKey="amount" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No revenue data yet</p>
+              <p className="py-16 text-center text-sm text-slate-500">No revenue data yet</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Recent Activities</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-sm">Recent Activities</h2>
+              <Link to="/admin/audit-log">
+                <Button size="sm" variant="ghost" className="text-xs gap-1">
+                  View All <ArrowRight className="w-3 h-3" />
+                </Button>
+              </Link>
+            </div>
             {stats?.recent_activities && stats.recent_activities.length > 0 ? (
               <div className="space-y-3">
-                {stats.recent_activities.slice(0, 10).map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                    <div>
-                      <p>{activity.description}</p>
-                      <p className="text-xs text-muted-foreground">{formatDateTime(activity.created_at)}</p>
+                {stats.recent_activities.slice(0, 6).map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                    <div className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                    <div className="min-w-0">
+                      <p className="text-slate-800 line-clamp-2">{activity.description}</p>
+                      <p className="text-xs text-slate-500">{formatDateTime(activity.created_at)}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No recent activities</p>
+              <p className="text-sm text-slate-500">No recent activities</p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <Card className="border-slate-200">
+        <CardContent className="p-4 sm:p-6">
+          <h2 className="font-semibold text-sm mb-4 text-slate-950">Admin Work Queue</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: 'Verify Owners', count: stats?.pending_owner_verifications, href: '/admin/verifications/owners' },
-            { label: 'Verify Drivers', count: stats?.pending_driver_verifications, href: '/admin/verifications/drivers' },
-            { label: 'Pending Payments', count: stats?.pending_payment_approvals, href: '/admin/payments' },
-            { label: 'Active Disputes', count: stats?.active_disputes, href: '/admin/disputes' },
+            { label: 'Owner Verifications', count: stats?.pending_owner_verifications, href: '/admin/verifications/owners', icon: <Shield className="h-4 w-4" /> },
+            { label: 'Driver Verifications', count: stats?.pending_driver_verifications, href: '/admin/verifications/drivers', icon: <Users className="h-4 w-4" /> },
+            { label: 'Car Verifications', count: stats?.pending_car_verifications, href: '/admin/verifications/cars', icon: <Car className="h-4 w-4" /> },
+            { label: 'Pending Payments', count: stats?.pending_payment_approvals, href: '/admin/payments', icon: <CreditCard className="h-4 w-4" /> },
+            { label: 'Active Disputes', count: stats?.active_disputes, href: '/admin/disputes', icon: <AlertTriangle className="h-4 w-4" /> },
           ].map((action) => (
-            <a key={action.label} href={action.href} className="p-4 rounded-xl border bg-card hover:shadow-md transition-all text-center">
-              <p className="text-sm font-medium">{action.label}</p>
-              {(action.count ?? 0) > 0 && <Badge variant="destructive" className="mt-2">{action.count}</Badge>}
-            </a>
+            <Link key={action.label} to={action.href} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                    {action.icon}
+                  </div>
+                  <p className="text-sm font-medium text-slate-800">{action.label}</p>
+                </div>
+                {(action.count ?? 0) > 0 && <Badge variant="destructive">{action.count}</Badge>}
+              </div>
+            </Link>
           ))}
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

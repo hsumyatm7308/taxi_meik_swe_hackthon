@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  ChevronLeft, ChevronRight, Fuel, Gauge, Users, MapPin, CalendarDays, Star,
+  ChevronLeft, ChevronRight, Fuel, Gauge, Users, MapPin, CalendarDays, Hash, Palette, Phone, Mail, ShieldCheck, GaugeCircle, Clock,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,20 @@ import type { Booking, Car } from '@/types'
 
 const KYC_REQUIRED = ['verified', 'trusted']
 
+function getBookingStageLabel(booking?: Booking | null) {
+  if (!booking) return undefined
+
+  const paymentStatus = booking.payment_status || booking.payment?.status || 'incomplete'
+
+  if (booking.status === 'requested') return 'Request Sent'
+  if (booking.status === 'accepted' && ['incomplete', 'failed'].includes(paymentStatus)) return 'Payment Needed'
+  if (booking.status === 'accepted') return 'Accepted'
+  if (booking.status === 'payment_pending') return 'Payment Pending'
+  if (booking.status === 'active') return 'Rental Active'
+
+  return 'View Booking'
+}
+
 export function DriverCarDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -31,15 +45,8 @@ export function DriverCarDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [imgIdx, setImgIdx] = useState(0)
   const [showApply, setShowApply] = useState(false)
-  const [showReview, setShowReview] = useState(false)
-  const [reviewRating, setReviewRating] = useState(5)
-  const [reviewComment, setReviewComment] = useState('')
-  const [applied, setApplied] = useState(false)
   const [existingBooking, setExistingBooking] = useState<Booking | null>(null)
   const [applying, setApplying] = useState(false)
-
-  const carBookings = useMemo<any[]>(() => [], [])
-  const carReviews = useMemo<any[]>(() => [], [])
 
   useEffect(() => {
     const loadCar = async () => {
@@ -73,7 +80,6 @@ export function DriverCarDetailPage() {
     const loadExistingBooking = async () => {
       if (!id || !user) {
         setExistingBooking(null)
-        setApplied(false)
         return
       }
 
@@ -85,10 +91,8 @@ export function DriverCarDetailPage() {
           : false
 
         setExistingBooking(blocksNewApplication ? booking : null)
-        setApplied(blocksNewApplication)
       } catch {
         setExistingBooking(null)
-        setApplied(false)
       }
     }
 
@@ -119,7 +123,6 @@ export function DriverCarDetailPage() {
         driver_notes: `Borrow request for ${car.brand} ${car.model}`,
       })
       setExistingBooking(booking)
-      setApplied(true)
       setShowApply(false)
       addToast('Borrow request sent to the owner.', 'success')
     } catch (err: any) {
@@ -129,24 +132,13 @@ export function DriverCarDetailPage() {
     }
   }
 
-  const handleSubmitReview = () => {
-    setShowReview(false)
-  }
-
-  const applyLabel = applied
-    ? existingBooking?.status === 'accepted'
-      ? 'Request Accepted'
-      : existingBooking?.status === 'payment_pending'
-        ? 'Payment Pending'
-        : existingBooking?.status === 'active'
-          ? 'Rental Active'
-          : 'Application Pending'
-    : car.is_available
-      ? 'Apply to Rent'
-      : 'Unavailable'
+  const bookingStageLabel = getBookingStageLabel(existingBooking)
+  const applyLabel = bookingStageLabel || (car.is_available ? 'Apply to Rent' : 'Unavailable')
+  const displayRate = car.rental_price || car.daily_rate
+  const rateLabel = car.rental_payment_type ? `/${car.rental_payment_type.toLowerCase()}` : '/day'
 
   const detailContent = (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <button onClick={() => navigate('/driver/cars')} className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
         <ChevronLeft className="w-4 h-4" /> Back to Browse
       </button>
@@ -190,102 +182,111 @@ export function DriverCarDetailPage() {
             <Badge variant="outline">{car.year}</Badge>
           </div>
 
+          {car.description && (
+            <Card>
+              <CardContent className="p-4 sm:p-5">
+                <p className="text-sm text-muted-foreground">{car.description}</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="p-4 sm:p-5">
-              <p className="text-sm text-muted-foreground">{car.description}</p>
+              <h2 className="font-semibold mb-4">Car Information</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <CarInfoItem icon={<Fuel className="h-4 w-4" />} label="Fuel type" value={car.fuel_type} />
+                <CarInfoItem icon={<Gauge className="h-4 w-4" />} label="Transmission" value={car.transmission} />
+                <CarInfoItem icon={<Users className="h-4 w-4" />} label="Seat capacity" value={`${car.seat_capacity} seats`} />
+                <CarInfoItem icon={<CalendarDays className="h-4 w-4" />} label="Year" value={String(car.year)} />
+                <CarInfoItem icon={<Palette className="h-4 w-4" />} label="Color" value={car.color} />
+                <CarInfoItem icon={<Hash className="h-4 w-4" />} label="License plate" value={car.license_plate} />
+                {car.license_number && <CarInfoItem icon={<Hash className="h-4 w-4" />} label="License number" value={car.license_number} />}
+                <CarInfoItem icon={<GaugeCircle className="h-4 w-4" />} label="Mileage" value={car.mileage !== null ? `${car.mileage.toLocaleString()} km` : 'Not provided'} />
+                <CarInfoItem icon={<CarIcon />} label="Car type" value={car.car_type} />
+                {car.rental_type && <CarInfoItem icon={<MapPin className="h-4 w-4" />} label="Rental type" value={car.rental_type.replace('_', ' ').toLowerCase()} />}
+                {car.rental_period && <CarInfoItem icon={<Clock className="h-4 w-4" />} label="Rental period" value={car.rental_period} />}
+                {car.owner_book && <CarInfoItem icon={<Hash className="h-4 w-4" />} label="Owner book" value={car.owner_book} />}
+              </div>
             </CardContent>
           </Card>
 
-          <div>
-            <h2 className="font-semibold mb-3">Features</h2>
-            <div className="flex flex-wrap gap-2">
-              {car.features?.map((f, i) => (
-                <Badge key={i} variant="secondary">{f}</Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-3">Owner</h2>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                  {car.owner?.name?.charAt(0) || 'O'}
-                </div>
-                <div>
-                  <p className="font-medium">{car.owner?.name}</p>
-                  <p className="text-xs text-muted-foreground">{car.owner?.email}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {carReviews.length > 0 && (
+          {car.features?.length > 0 && (
             <div>
-              <h2 className="font-semibold mb-3 flex items-center gap-2">
-                <Star className="w-4 h-4 text-yellow-500" />
-                Reviews ({carReviews.length})
-              </h2>
-              <div className="space-y-3">
-                {carReviews.map((r) => (
-                  <Card key={r.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{r.reviewer?.name || 'Anonymous'}</span>
-                        <span className="text-xs text-muted-foreground">{formatDate(r.created_at)}</span>
-                      </div>
-                      <div className="flex gap-0.5 mb-1">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
-                        ))}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{r.comment}</p>
-                    </CardContent>
-                  </Card>
+              <h2 className="font-semibold mb-3">Features</h2>
+              <div className="flex flex-wrap gap-2">
+                {car.features.map((f, i) => (
+                  <Badge key={i} variant="secondary">{f}</Badge>
                 ))}
               </div>
             </div>
           )}
+
+          <div>
+            <h2 className="font-semibold mb-3">Owner Information</h2>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary font-semibold">
+                    {car.owner?.profile_photo_url ? (
+                      <img src={car.owner.profile_photo_url} alt={car.owner.name} className="h-full w-full object-cover" />
+                    ) : (
+                      car.owner?.name?.charAt(0) || 'O'
+                    )}
+                  </div>
+                  <div className="min-w-0 space-y-2">
+                    <div>
+                      <p className="font-medium">{car.owner?.name || 'Owner'}</p>
+                      {car.owner?.verification_status && (
+                        <p className="mt-1 flex items-center gap-1 text-xs capitalize text-muted-foreground">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          {car.owner.verification_status}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {car.owner?.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {car.owner.phone}</span>}
+                      {car.owner?.email && <span className="flex items-center gap-1"><Mail className="h-3.5 w-3.5" /> {car.owner.email}</span>}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <div className="space-y-4">
           <Card className="sticky top-24">
             <CardContent className="p-5 space-y-4">
               <div>
-                <p className="text-3xl font-bold text-primary">{formatCurrency(car.daily_rate)}<span className="text-sm text-muted-foreground font-normal">/day</span></p>
+                <p className="text-3xl font-bold text-primary">{formatCurrency(displayRate)}<span className="text-sm text-muted-foreground font-normal">{rateLabel}</span></p>
                 {car.deposit_amount > 0 && (
                   <p className="text-sm text-muted-foreground mt-1">Deposit: {formatCurrency(car.deposit_amount)}</p>
                 )}
               </div>
 
               <div className="text-sm text-muted-foreground space-y-1.5">
+                <p>Daily: {formatCurrency(car.daily_rate)}</p>
                 {car.weekly_rate && <p>Weekly: {formatCurrency(car.weekly_rate)}</p>}
                 {car.monthly_rate && <p>Monthly: {formatCurrency(car.monthly_rate)}</p>}
               </div>
 
-              <Button className="w-full" size="lg" disabled={!car.is_available || applied || applying} onClick={() => setShowApply(true)}>
+              <Button
+                className="w-full"
+                size="lg"
+                variant={bookingStageLabel ? 'outline' : 'default'}
+                disabled={!bookingStageLabel && (!car.is_available || applying)}
+                onClick={() => {
+                  if (existingBooking) {
+                    navigate(`/driver/bookings/${existingBooking.id}`)
+                    return
+                  }
+                  setShowApply(true)
+                }}
+              >
                 {applyLabel}
               </Button>
 
-              {existingBooking && (
-                <Button className="w-full" size="sm" variant="outline" onClick={() => navigate(`/driver/bookings/${existingBooking.id}`)}>
-                  View Booking
-                </Button>
-              )}
-
-              {carBookings.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Rental History</h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {carBookings.slice(0, 5).map((b) => (
-                      <div key={b.id} className="text-xs text-muted-foreground flex items-center justify-between py-1 border-b last:border-0">
-                        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {formatDate(b.start_date)}</span>
-                        <Badge variant="outline" className="text-[10px]">{b.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {!car.is_available && <p className="text-xs text-muted-foreground">This car is currently unavailable.</p>}
             </CardContent>
           </Card>
         </div>
@@ -321,4 +322,24 @@ export function DriverCarDetailPage() {
   }
 
   return detailContent
+}
+
+function CarIcon() {
+  return <Fuel className="h-4 w-4" />
+}
+
+function CarInfoItem({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | number | null }) {
+  if (value === undefined || value === null || value === '') return null
+
+  return (
+    <div className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-slate-600">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="mt-1 break-words text-sm font-semibold capitalize text-slate-950">{value}</p>
+      </div>
+    </div>
+  )
 }

@@ -4,6 +4,31 @@ Project: `taxi_meik_swe`
 
 Backend file being reduced: `backend/src/index.ts`
 
+## Frontend UI Decisions
+
+Dashboard shell:
+- Sidebar uses a shared flat dark slate theme for all roles, with amber active states and no gradient overlay.
+- Sidebar collapse control belongs beside the brand name in the sidebar header.
+- Sidebar should not show user name/role at the bottom for admin, owner, or driver; the top outlet navbar owns profile identity.
+- Active sidebar route matching is explicit: root dashboard links (`/owner`, `/driver`, `/admin`) should not stay active on every child route.
+
+Outlet navbar:
+- Dashboard outlet navbar uses slate colors only (`bg-slate-950`, slate border/text) and compact height (`h-14`).
+- Notification dropdown and profile dropdown should match the slate navbar theme.
+
+Dashboard outlet/card hierarchy:
+- Dashboard outlet uses a slate content base (`bg-slate-50`, `text-slate-950`).
+- Shared cards should use white surfaces, slate borders, strong slate titles/values, and softer slate metadata.
+- Car listing, booking request, agreement, stats, and admin quick-action cards should follow that hierarchy.
+
+Owner KYC UX:
+- Owner KYC approval badge belongs beside the `KYC Information` card title.
+- NRC number should lock after approval; changing approved NRC requires support/admin re-verification, not normal inline editing.
+- NRC front/back photo upload sections belong inside the `KYC Information` card, below the `Save KYC Info` button.
+
+Owner booking requests:
+- Owner should see requested driver info in booking cards: name, phone, email, verification status, requested car, dates, and total amount.
+
 ## Goal
 
 Refactor the large backend entrypoint safely without changing working app flow, route paths, request/response shapes, or frontend behavior.

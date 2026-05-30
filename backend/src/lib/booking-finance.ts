@@ -47,6 +47,7 @@ export async function getPaymentQuote(application: any, payerRole: PaymentPayerR
 
 export async function serializeIncompletePayment(application: any, payerRole: PaymentPayerRole) {
   const quote = await getPaymentQuote(application, payerRole);
+  const transferFromName = payerRole === "OWNER" ? application.owner?.name : application.driver?.name;
 
   return {
     id: `incomplete-${payerRole.toLowerCase()}-${application.id}`,
@@ -56,6 +57,10 @@ export async function serializeIncompletePayment(application: any, payerRole: Pa
     method: null,
     payer_role: payerRole,
     payment_purpose: quote.paymentPurpose,
+    transfer_from_name: transferFromName || null,
+    transfer_to_name: "Taxi Meik Swe Agency",
+    driver_name: application.driver?.name || null,
+    owner_name: application.owner?.name || null,
     commission_rate: quote.commissionRate,
     commission_amount: quote.commissionAmount,
     transaction_id: null,
@@ -172,9 +177,19 @@ export async function serializeBookingWithFinancials(application: any) {
 export async function getBookingPayment(applicationId: string, payerRole: PaymentPayerRole = "DRIVER") {
   try {
     const [payment] = await prisma.$queryRaw<Array<any>>`
-      SELECT * FROM booking_payments
-      WHERE booking_id = ${applicationId}::uuid
-        AND payer_role = ${payerRole}
+      SELECT
+        p.*,
+        payer.full_name AS transfer_from_name,
+        'Taxi Meik Swe Agency' AS transfer_to_name,
+        driver.full_name AS driver_name,
+        owner.full_name AS owner_name
+      FROM booking_payments p
+      INNER JOIN car_applications a ON a.id = p.booking_id
+      LEFT JOIN users payer ON payer.id = p.user_id
+      LEFT JOIN users driver ON driver.id = a.driver_id
+      LEFT JOIN users owner ON owner.id = a.owner_id
+      WHERE p.booking_id = ${applicationId}::uuid
+        AND p.payer_role = ${payerRole}
       LIMIT 1
     `;
 
