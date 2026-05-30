@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarDays, ChevronLeft, ChevronRight, Fuel, Gauge, MapPin, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/utils/format'
 
@@ -17,7 +17,6 @@ export function CarCard({ car, onView, onBook, bookingStageLabel, onBookingStage
   const [imgIdx, setImgIdx] = useState(0)
   const [applying, setApplying] = useState(false)
   const displayRate = car.rental_price || car.daily_rate
-  const rateLabel = car.rental_payment_type ? `/${car.rental_payment_type.toLowerCase()}` : '/day'
   const location = [car.city, car.location].filter(Boolean).join(', ') || 'Location not provided'
 
   const handleApply = async () => {
@@ -47,7 +46,7 @@ export function CarCard({ car, onView, onBook, bookingStageLabel, onBookingStage
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
-      className="group flex h-full min-h-[520px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-950 shadow-sm transition-all hover:border-slate-300 hover:shadow-lg"
+      className="group flex h-full min-h-[430px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-950 shadow-sm transition-all hover:border-slate-300 hover:shadow-lg"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         <img
@@ -91,25 +90,6 @@ export function CarCard({ car, onView, onBook, bookingStageLabel, onBookingStage
           </p>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-600">
-          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
-            <Fuel className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="truncate capitalize">{car.fuel_type}</span>
-          </span>
-          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
-            <Gauge className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="truncate capitalize">{car.transmission}</span>
-          </span>
-          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
-            <Users className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="truncate">{car.seat_capacity} seats</span>
-          </span>
-          <span className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2.5">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-            <span className="truncate">{car.year}</span>
-          </span>
-        </div>
-
         {car.description && (
           <div className="mt-4 min-h-10">
             <p className="line-clamp-2 text-sm leading-5 text-slate-500">{car.description}</p>
@@ -120,7 +100,6 @@ export function CarCard({ car, onView, onBook, bookingStageLabel, onBookingStage
           <div className="min-w-0">
             <p className="text-xl font-bold text-slate-950">
               {formatCurrency(displayRate)}
-              <span className="text-xs font-normal text-slate-500">{rateLabel}</span>
             </p>
             {car.deposit_amount > 0 && (
               <p className="mt-1 text-xs text-slate-500">Deposit: {formatCurrency(car.deposit_amount)}</p>

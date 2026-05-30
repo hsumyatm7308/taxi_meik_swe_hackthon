@@ -1,16 +1,4 @@
 import { useEffect, useState } from 'react'
-import {
-  BrainCircuit,
-  CheckCircle2,
-  Database,
-  MapPin,
-  Send,
-  Sparkles,
-  Star,
-  Trophy,
-  UserRound,
-  WandSparkles,
-} from 'lucide-react'
 import apiClient from '@/api/client'
 import { cn } from '@/utils/format'
 
@@ -68,22 +56,20 @@ function DriverAvatar({ name, featured }: { name: string; featured?: boolean }) 
       className={cn(
         'grid h-12 w-12 shrink-0 place-items-center rounded-full border text-sm font-semibold',
         featured
-          ? 'border-cyan-300/60 bg-cyan-300/15 text-cyan-50 shadow-[0_0_28px_rgba(34,211,238,0.35)]'
-          : 'border-white/10 bg-white/5 text-white/80'
+          ? 'border-amber-200 bg-amber-50 text-amber-700'
+          : 'border-slate-200 bg-slate-50 text-slate-600'
       )}
     >
-      {initials || <UserRound className="h-5 w-5" />}
+      {initials || 'DR'}
     </div>
   )
 }
 
 function MatchMetric({
-  icon,
   label,
   value,
   featured,
 }: {
-  icon: React.ReactNode
   label: string
   value: string
   featured?: boolean
@@ -92,14 +78,13 @@ function MatchMetric({
     <div
       className={cn(
         'rounded-lg border px-3 py-2',
-        featured ? 'border-cyan-300/20 bg-cyan-300/10' : 'border-white/10 bg-white/5'
+        featured ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'
       )}
     >
-      <div className="flex items-center gap-2 text-[11px] text-white/45">
-        {icon}
+      <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500">
         {label}
       </div>
-      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-950">{value}</p>
     </div>
   )
 }
@@ -108,17 +93,14 @@ function DriverCard({ driver, featured = false }: { driver: DriverMatch; feature
   return (
     <article
       className={cn(
-        'relative overflow-hidden rounded-xl border backdrop-blur-md transition-all duration-300',
+        'relative overflow-hidden rounded-xl border bg-white transition-all duration-300',
         featured
-          ? 'border-cyan-300/40 bg-white/10 p-5 shadow-[0_0_55px_rgba(34,211,238,0.16)] lg:col-span-2'
-          : 'border-white/10 bg-white/5 p-4 hover:border-white/20 hover:bg-white/10'
+          ? 'border-amber-200 p-5 shadow-sm ring-1 ring-amber-100 lg:col-span-2'
+          : 'border-slate-200 p-4 shadow-sm hover:border-slate-300 hover:shadow-md'
       )}
     >
       {featured && (
-        <>
-          <div className="pointer-events-none absolute inset-x-8 -top-px h-px bg-gradient-to-r from-transparent via-cyan-200 to-transparent" />
-          <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl" />
-        </>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-amber-400" />
       )}
 
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -126,18 +108,14 @@ function DriverCard({ driver, featured = false }: { driver: DriverMatch; feature
           <DriverAvatar name={driver.name} featured={featured} />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-base font-semibold text-white">{driver.name}</h3>
+              <h3 className="truncate text-base font-semibold text-slate-950">{driver.name}</h3>
               {driver.isRecommended && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/15 px-2 py-1 text-[11px] font-medium text-amber-100">
-                  <Trophy className="h-3 w-3" />
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700">
                   Best Match
                 </span>
               )}
             </div>
-            <p className="mt-1 flex items-center gap-1 text-xs text-white/55">
-              <MapPin className="h-3.5 w-3.5 text-cyan-200/80" />
-              {driver.township}
-            </p>
+            <p className="mt-1 text-xs text-slate-500">{driver.township}</p>
           </div>
         </div>
 
@@ -145,8 +123,8 @@ function DriverCard({ driver, featured = false }: { driver: DriverMatch; feature
           className={cn(
             'inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold',
             featured
-              ? 'border-cyan-200/40 bg-cyan-200/15 text-cyan-50'
-              : 'border-white/10 bg-white/5 text-white/70'
+              ? 'border-amber-200 bg-amber-50 text-amber-700'
+              : 'border-slate-200 bg-slate-50 text-slate-600'
           )}
         >
           Rank {driver.rank}
@@ -156,13 +134,11 @@ function DriverCard({ driver, featured = false }: { driver: DriverMatch; feature
       <div className="relative mt-5 grid grid-cols-2 gap-3">
         <MatchMetric
           featured={featured}
-          icon={<Star className="h-3.5 w-3.5 text-amber-200" />}
           label="Rating"
           value={`${driver.rating.toFixed(1)} / 5`}
         />
         <MatchMetric
           featured={featured}
-          icon={<CheckCircle2 className="h-3.5 w-3.5 text-emerald-200" />}
           label="Experience"
           value={`${driver.experienceYears} years`}
         />
@@ -171,14 +147,11 @@ function DriverCard({ driver, featured = false }: { driver: DriverMatch; feature
       <div
         className={cn(
           'relative mt-4 rounded-lg border p-4',
-          featured ? 'border-cyan-200/20 bg-black/25' : 'border-white/10 bg-black/20'
+          featured ? 'border-amber-200 bg-amber-50/60' : 'border-slate-200 bg-slate-50'
         )}
       >
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-cyan-100">
-          <BrainCircuit className="h-4 w-4" />
-          AI Reasoning
-        </div>
-        <p className="text-sm leading-6 text-white/68">{driver.summary}</p>
+        <div className="mb-2 text-xs font-medium text-slate-700">Reasoning</div>
+        <p className="text-sm leading-6 text-slate-600">{driver.summary}</p>
       </div>
     </article>
   )
@@ -231,59 +204,50 @@ export function AIDriverSearchInterface() {
   }, [])
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070d] px-4 py-5 text-white shadow-2xl sm:px-6 sm:py-7">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent" />
-      <div className="pointer-events-none absolute left-1/2 top-0 h-56 w-56 -translate-x-1/2 rounded-full bg-cyan-300/10 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full bg-amber-300/10 blur-3xl" />
-
-      <div className="relative flex flex-col gap-5">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-5">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-cyan-200/30 bg-cyan-200/10 shadow-[0_0_32px_rgba(34,211,238,0.25)]">
-              <WandSparkles className="h-5 w-5 text-cyan-100" />
-            </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-semibold text-white sm:text-2xl">
+              <h2 className="text-xl font-semibold text-slate-950 sm:text-2xl">
                 Gemini AI Matchmaker
               </h2>
-              <p className="mt-1 text-sm text-white/50">
+              <p className="mt-1 text-sm text-slate-500">
                 Search ranked applicants with location, rating, and experience signals.
               </p>
             </div>
           </div>
 
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/65 backdrop-blur-md">
-            <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.85)]" />
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
             Live database
           </div>
         </header>
 
         <form
           onSubmit={handleSubmit}
-          className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 shadow-[0_20px_80px_rgba(0,0,0,0.35)] backdrop-blur-md focus-within:border-cyan-200/40 focus-within:shadow-[0_0_45px_rgba(34,211,238,0.16)]"
+          className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 transition-colors focus-within:border-amber-300 focus-within:bg-white"
         >
-          <Sparkles className="ml-2 hidden h-5 w-5 shrink-0 text-cyan-100 sm:block" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Find me a 5-star driver in Kamayut"
-            className="h-12 min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/35 sm:text-base"
+            className="h-12 min-w-0 flex-1 bg-transparent px-2 text-sm text-slate-950 outline-none placeholder:text-slate-400 sm:text-base"
           />
           <button
             type="submit"
             disabled={isProcessing}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-cyan-200/30 bg-cyan-300/15 px-4 text-sm font-semibold text-cyan-50 transition-all hover:border-cyan-100/60 hover:bg-cyan-300/25 hover:shadow-[0_0_28px_rgba(34,211,238,0.28)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Search</span>
+            Search
           </button>
         </form>
 
         {isProcessing && (
-          <div className="mx-auto flex w-full max-w-3xl items-center justify-center gap-3 rounded-xl border border-cyan-200/20 bg-cyan-200/10 px-4 py-4 text-sm text-cyan-50 backdrop-blur-md">
+          <div className="mx-auto flex w-full max-w-3xl items-center justify-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700">
             <span className="relative flex h-4 w-4">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-200 opacity-75" />
-              <span className="relative inline-flex h-4 w-4 rounded-full bg-cyan-100 shadow-[0_0_22px_rgba(34,211,238,0.8)]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
+              <span className="relative inline-flex h-4 w-4 rounded-full bg-amber-500" />
             </span>
             Gemini is analyzing applicants...
           </div>
@@ -291,10 +255,9 @@ export function AIDriverSearchInterface() {
 
         {hasSearched && !isProcessing && topMatch && (
           <>
-            <div className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/65 backdrop-blur-md">
-              <Database className="h-4 w-4 shrink-0 text-cyan-100" />
+            <div className="mx-auto flex w-full max-w-3xl items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               Showing AI-ranked drivers from your database for{' '}
-              <span className="font-semibold text-cyan-100">"{submittedQuery}"</span>.
+              <span className="font-semibold text-slate-950">"{submittedQuery}"</span>.
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
@@ -307,7 +270,7 @@ export function AIDriverSearchInterface() {
         )}
 
         {hasSearched && !isProcessing && !topMatch && (
-          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/60 backdrop-blur-md">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
             {error || 'No approved drivers found in the database for this search.'}
           </div>
         )}

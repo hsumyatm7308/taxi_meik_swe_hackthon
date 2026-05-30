@@ -118,8 +118,8 @@ export function DriverBrowseCarsPage() {
     <div className="mx-auto w-full max-w-6xl space-y-6">
    
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto] lg:items-center">
+      <div className="rounded-2xl">
+        <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto] lg:items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -144,24 +144,7 @@ export function DriverBrowseCarsPage() {
             </select>
           </label>
 
-          <label className="relative">
-            <span className="sr-only">Transmission</span>
-            <select
-              value={transmissionFilter}
-              onChange={(e) => { setTransmissionFilter(e.target.value); setPage(1) }}
-              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-slate-700 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="all">All transmission</option>
-              {transmissionOptions.map((transmission) => (
-                <option key={transmission} value={transmission}>{transmission}</option>
-              ))}
-            </select>
-          </label>
 
-          <Button variant="outline" className="h-11 justify-center" onClick={clearFilters}>
-            <SlidersHorizontal className="h-4 w-4" />
-            Reset
-          </Button>
         </div>
       </div>
 

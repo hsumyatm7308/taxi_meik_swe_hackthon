@@ -226,20 +226,19 @@ const BookingRequestCard = memo(function BookingRequestCard({
             <div className="flex flex-1 flex-col gap-4">
               <div className="flex min-w-0 items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                  <User className="h-5 w-5" />
+                  {/* <User className="h-5 w-5" /> */}
                 </div>
                 <div className="min-w-0 space-y-2">
                   <div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="text-base font-semibold text-slate-950">{driverName}</p>
+                      {/* <p className="text-base font-semibold text-slate-950">{driverName}</p> */}
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                         Requested {formatDate(booking.created_at)}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">Booking #{booking.id}</p>
                   </div>
-                  <BookingSummary booking={booking} carName={carName} />
-                  <DriverContact booking={booking} />
+                  {/* <DriverContact booking={booking} /> */}
                 </div>
               </div>
 
