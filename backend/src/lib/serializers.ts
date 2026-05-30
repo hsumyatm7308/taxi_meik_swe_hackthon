@@ -4,6 +4,16 @@ export function toUserVerificationStatus(status?: string | null) {
   return "pending";
 }
 
+function getPublicBaseUrl() {
+  return process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`;
+}
+
+function toPublicUrl(path?: string | null) {
+  if (!path) return null;
+  if (/^(https?:\/\/|data:|blob:)/i.test(path)) return path;
+  return `${getPublicBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export function serializeOwnerDocuments(ownerProfile: any) {
   if (!ownerProfile) return [];
 
@@ -98,8 +108,29 @@ export function isApprovedOwner(user: any) {
 }
 
 export function serializeCar(car: any) {
-  const primaryImage = car.carImages?.frontImage;
   const dailyRate = Number(car.rentalPrice || 0);
+  const imageEntries = car.carImages
+    ? [
+        ["front", car.carImages.frontImage],
+        ["back", car.carImages.backImage],
+        ["left", car.carImages.leftImage],
+        ["right", car.carImages.rightImage],
+      ]
+    : [];
+  const photos = imageEntries
+    .map(([view, path], index) => {
+      const url = toPublicUrl(path);
+      if (!url) return null;
+
+      return {
+        id: `${car.id}:${view}`,
+        car_id: car.id,
+        url,
+        is_primary: index === 0,
+        created_at: car.carImages.createdAt.toISOString(),
+      };
+    })
+    .filter(Boolean);
 
   return {
     id: car.id,
@@ -125,7 +156,7 @@ export function serializeCar(car: any) {
     features: [],
     status: toUserVerificationStatus(car.adminApprovalStatus),
     is_available: car.availabilityStatus === "AVAILABLE",
-    owner_book: car.ownerBook,
+    owner_book: toPublicUrl(car.ownerBook),
     rental_period: car.rentalPeriod,
     rental_payment_type: car.rentalPaymentType,
     rental_type: car.rentalType,
@@ -135,18 +166,12 @@ export function serializeCar(car: any) {
     created_at: car.createdAt.toISOString(),
     updated_at: car.updatedAt.toISOString(),
     owner: car.owner ? serializeUser(car.owner) : undefined,
-    photos: primaryImage ? [{
-      id: `${car.id}:front`,
-      car_id: car.id,
-      url: primaryImage,
-      is_primary: true,
-      created_at: car.carImages.createdAt.toISOString(),
-    }] : [],
+    photos,
     images: car.carImages ? {
-      front_image: car.carImages.frontImage,
-      back_image: car.carImages.backImage,
-      left_image: car.carImages.leftImage,
-      right_image: car.carImages.rightImage,
+      front_image: toPublicUrl(car.carImages.frontImage),
+      back_image: toPublicUrl(car.carImages.backImage),
+      left_image: toPublicUrl(car.carImages.leftImage),
+      right_image: toPublicUrl(car.carImages.rightImage),
     } : null,
   };
 }

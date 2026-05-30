@@ -12,7 +12,7 @@ import { useToast } from '@/providers'
 import { UserRole, type Payment } from '@/types'
 import { formatCurrency } from '@/utils/format'
 
-const fieldBase = 'inline-block border-0 border-b border-dotted border-slate-500 bg-transparent px-1 text-center align-baseline outline-none focus:border-slate-900 print:px-0'
+const fieldBase = 'inline-block max-w-full border-0 border-b border-dotted border-slate-500 bg-transparent px-1 text-center align-baseline outline-none focus:border-slate-900 print:px-0'
 
 type AgreementFields = Record<string, string>
 
@@ -39,7 +39,7 @@ function Blank({
 
 function Page({ children }: { children: React.ReactNode }) {
   return (
-    <section className="mx-auto min-h-[1120px] w-full max-w-[794px] bg-white px-16 py-16 text-[13px] leading-8 text-slate-950 shadow-sm print:min-h-screen print:max-w-none print:shadow-none">
+    <section className="mx-auto min-h-0 w-full max-w-[794px] overflow-hidden bg-white px-4 py-6 text-[12px] leading-7 text-slate-950 shadow-sm sm:px-8 sm:py-10 sm:text-[13px] sm:leading-8 lg:min-h-[1120px] lg:px-16 lg:py-16 print:min-h-screen print:max-w-none print:overflow-visible print:px-16 print:py-16 print:text-[13px] print:leading-8 print:shadow-none">
       {children}
     </section>
   )
@@ -295,27 +295,27 @@ export function AgreementFormPage() {
   }, [id, bothAgreed, role])
 
   return (
-    <div className="min-h-screen bg-slate-200 py-8 print:bg-white print:py-0">
+    <div className="min-h-screen bg-slate-200 px-3 py-4 sm:px-4 sm:py-8 print:bg-white print:px-0 print:py-0">
       <div className="mx-auto mb-4 flex max-w-[794px] justify-end print:hidden">
         <Button onClick={() => window.print()}>Print</Button>
       </div>
 
       <div className="space-y-6 print:space-y-0">
         <Page>
-          <div className="mx-auto w-[660px] border-y border-yellow-500 bg-red-50/70 py-2.5 text-center leading-6">
+          <div className="mx-auto w-full max-w-[660px] border-y border-yellow-500 bg-red-50/70 px-2 py-2.5 text-center leading-6">
             <p className="text-[13px] font-bold text-red-800">TAXI MEIK SWE CAR RENTAL MARKETPLACE PLATFORM</p>
-            <p className="text-[17px] font-bold text-red-800">သုံးဦးသဘောတူ အငှားယာဉ်ငှားရမ်းခြင်း ကတိစာချုပ်</p>
+            <p className="text-[15px] font-bold text-red-800 sm:text-[17px]">သုံးဦးသဘောတူ အငှားယာဉ်ငှားရမ်းခြင်း ကတိစာချုပ်</p>
             <p className="text-[13px] font-semibold text-slate-600">
               ယာဉ်ပိုင်ရှင် &nbsp;&nbsp; • &nbsp;&nbsp; ယာဉ်မောင်း &nbsp;&nbsp; • &nbsp;&nbsp; Taxi Meik Swe အကျိုးဆောင်ကုမ္ပဏီ
             </p>
           </div>
 
-          <div className="mt-16 text-center">
-            <p className="text-[20px] font-bold">“သုံးဦးသဘောတူ မော်တော်ယာဉ်ငှားရမ်းခြင်း ကတိစာချုပ်”</p>
-            <p className="mt-10 text-right text-[15px]">ရက်စွဲ {blank('date', 'w-64')}</p>
+          <div className="mt-10 text-center sm:mt-16">
+            <p className="text-[17px] font-bold sm:text-[20px]">“သုံးဦးသဘောတူ မော်တော်ယာဉ်ငှားရမ်းခြင်း ကတိစာချုပ်”</p>
+            <p className="mt-8 text-right text-[14px] sm:mt-10 sm:text-[15px]">ရက်စွဲ {blank('date', 'w-64')}</p>
           </div>
 
-          <div className="mt-8 space-y-4 text-[15px] leading-9">
+          <div className="mt-8 space-y-4 text-[14px] leading-8 sm:text-[15px] sm:leading-9">
             <p className="font-bold">စာချုပ်တွင် ပါဝင်ချုပ်ဆိုသူများ -</p>
             <p>
               (၁) ယာဉ်ပိုင်ရှင်- {blank('ownerCity', 'w-48')} မြို့၊ {blank('ownerTownship', 'w-40')} မြို့နယ်၊ {blank('ownerWard', 'w-44')}
@@ -343,7 +343,7 @@ export function AgreementFormPage() {
             </p>
           </div>
 
-          <div className="mt-10 space-y-4 text-[15px] leading-9">
+          <div className="mt-10 space-y-4 text-[14px] leading-8 sm:text-[15px] sm:leading-9">
             <p className="font-bold text-red-800">လုပ်ငန်းစဉ်များ၊ စည်းကမ်းချက်များနှင့် ငွေကြေးဆိုင်ရာ သတ်မှတ်ချက်များ</p>
             <p className="text-justify">
               <span className="font-bold">၁။ စပေါ်ငွေနှင့် ကားငှားခ ငွေပေးချေခြင်းလုပ်ငန်းစဉ် (Financial Flow Process)-</span>
@@ -355,7 +355,7 @@ export function AgreementFormPage() {
         </Page>
 
         <Page>
-          <div className="space-y-5 pt-2 text-[15px] leading-9">
+          <div className="space-y-5 pt-2 text-[14px] leading-8 sm:text-[15px] sm:leading-9">
             <p className="text-justify">
               {blank('commissionAmount', 'w-48')} (စုစုပေါင်း ကျပ် {blank('totalAmount', 'w-52')}) အားလုံးကို
               အကျိုးဆောင်ကုမ္ပဏီထံသို့ ဦးစွာ ပေးပို့ရမည်။ ခွဲခြမ်းပေးပို့ရန်မည် ဖြစ်သည်။
@@ -417,14 +417,14 @@ export function AgreementFormPage() {
         </Page>
 
         <Page>
-          <div className="mt-20 space-y-24 text-[15px] leading-9">
+          <div className="mt-10 space-y-12 text-[14px] leading-8 sm:mt-16 sm:space-y-16 sm:text-[15px] sm:leading-9 lg:mt-20 lg:space-y-24">
             <p className="mx-auto max-w-[610px] text-justify">
               အထက်ဖော်ပြပါ အချက်အလက်များကို ယာဉ်ပိုင်ရှင်၊ ယာဉ်မောင်း နှင့် အကျိုးဆောင်ကုမ္ပဏီတို့သည်
               သေချာစွာ ဖတ်ရှုနားလည်ပြီး မိမိတို့၏ အခွင့်အရေးများဖြင့် သဘောတူညီ၍ ဤသုံးဦးသဘောတူ
               ကတိစာချုပ်ကို လက်မှတ်ရေးထိုး ချုပ်ဆိုကြောင်း ဖြစ်ပါသည်။
             </p>
 
-            <div className="grid grid-cols-3 gap-12 text-[14px] leading-10">
+            <div className="grid grid-cols-1 gap-8 text-[14px] leading-9 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12 lg:leading-10 print:grid-cols-3 print:gap-12">
               <div>
                 <p className="font-bold">ယာဉ်ပိုင်ရှင်</p>
                 <p className="font-bold leading-5">(Vehicle Owner)</p>
@@ -460,7 +460,7 @@ export function AgreementFormPage() {
         </Page>
 
         {bothAgreed && canUsePayment && (
-          <section className="mx-auto max-w-[794px] print:hidden">
+          <section className="mx-auto w-full max-w-[794px] print:hidden">
             <Card>
               <CardContent className="space-y-4 p-4">
                 <div>
@@ -476,7 +476,7 @@ export function AgreementFormPage() {
                   <p className="text-sm text-muted-foreground">Loading payment details...</p>
                 ) : (
                   <>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       {availablePaymentMethods.map((method) => (
                         <button
                           key={method.value}

@@ -1,54 +1,71 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
-  CalendarCheck, Clock, DollarSign,
+  CalendarCheck, Car, CreditCard, FileCheck, MessageSquare, User,
   ShieldAlert, ShieldEllipsis, XCircle,
   ArrowRight,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { StatsCard } from '@/components/shared/StatsCard'
-import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
-import { bookingsApi, usersApi } from '@/api'
+import { usersApi } from '@/api'
 import { useAuth } from '@/providers'
 import { isKycApproved, normalizeVerificationStatus } from '@/constants'
-import type { Booking } from '@/types'
-import { formatCurrency, formatDate } from '@/utils/format'
 
-function getRecentMonthLabels() {
-  const formatter = new Intl.DateTimeFormat('en-US', { month: 'short' })
-  const now = new Date()
+const featureCards = [
+  {
+    title: 'Browse verified cars',
+    description: 'Search approved cars by brand, model, city, and pickup location.',
+    path: '/driver/cars',
+    action: 'Browse Cars',
+    icon: Car,
+  },
+  {
+    title: 'Send rental requests',
+    description: 'Apply to rent available cars and wait for owner/admin approval.',
+    path: '/driver/bookings',
+    action: 'My Booking',
+    icon: CalendarCheck,
+  },
+  {
+    title: 'Manage payments',
+    description: 'Upload payment proof and follow payment confirmation status.',
+    path: '/driver/payments',
+    action: 'Payments',
+    icon: CreditCard,
+  },
+  {
+    title: 'Complete KYC',
+    description: 'Submit NRC, selfie, and driving license documents for verification.',
+    path: '/driver/documents',
+    action: 'KYC',
+    icon: FileCheck,
+  },
+  {
+    title: 'Stay notified',
+    description: 'Receive updates for bookings, agreements, payments, and admin decisions.',
+    path: '/driver/notifications',
+    action: 'Notifications',
+    icon: MessageSquare,
+  },
+  {
+    title: 'Update profile',
+    description: 'Keep your phone, name, and account details current.',
+    path: '/driver/profile',
+    action: 'Profile',
+    icon: User,
+  },
+]
 
-  return Array.from({ length: 6 }, (_, index) => {
-    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)
-    return formatter.format(date)
-  })
-}
-
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
-}
-
-function getInclusiveRentalDays(startDate: string, endDate: string) {
-  const start = startOfDay(new Date(startDate))
-  const end = startOfDay(new Date(endDate))
-  const diff = Math.max(0, end.getTime() - start.getTime())
-  return Math.max(1, Math.round(diff / 86400000) + 1)
-}
-
-function getDailyBookingAmount(booking: Booking) {
-  const carRate = booking.car?.rental_price || booking.car?.daily_rate
-  if (carRate) return Number(carRate)
-
-  return Number(booking.total_amount || 0) / getInclusiveRentalDays(booking.start_date, booking.end_date)
-}
-
-function isSameMonth(date: Date, monthIndex: number, year: number) {
-  return date.getMonth() === monthIndex && date.getFullYear() === year
-}
+const workflowSteps = [
+  'Complete KYC verification',
+  'Browse available verified cars',
+  'Send a rental request',
+  'Wait for owner and admin approval',
+  'Submit payment and deposit proof',
+  'Start and manage the rental',
+]
 
 function KYCAlert({ status }: { status: string }) {
   const normalizedStatus = normalizeVerificationStatus(status)
@@ -95,7 +112,6 @@ function KYCAlert({ status }: { status: string }) {
 
 export function DriverDashboardPage() {
   const { user } = useAuth()
-  const [bookings, setBookings] = useState<Booking[]>([])
   const [kycStatus, setKycStatus] = useState(user?.verification_status || 'unverified')
   const [loading, setLoading] = useState(true)
 
@@ -107,20 +123,11 @@ export function DriverDashboardPage() {
     const loadDashboard = async () => {
       try {
         setLoading(true)
-        const [bookingsRes, kycRes] = await Promise.allSettled([
-          bookingsApi.getMyBookings(),
-          usersApi.getKycStatus(),
-        ])
+        const kycRes = await usersApi.getKycStatus()
 
-        if (bookingsRes.status === 'fulfilled') {
-          setBookings(bookingsRes.value.data || [])
-        } else {
-          setBookings([])
-        }
-
-        if (kycRes.status === 'fulfilled') {
-          setKycStatus(kycRes.value?.kycStatus || user?.verification_status || 'unverified')
-        }
+        setKycStatus(kycRes?.kycStatus || user?.verification_status || 'unverified')
+      } catch {
+        setKycStatus(user?.verification_status || 'unverified')
       } finally {
         setLoading(false)
       }
@@ -129,35 +136,9 @@ export function DriverDashboardPage() {
     loadDashboard()
   }, [user?.verification_status])
 
-  const payableBookings = bookings.filter((booking) => !['requested', 'cancelled'].includes(booking.status))
-  const today = startOfDay(new Date())
-  const thisMonth = today.getMonth()
-  const thisYear = today.getFullYear()
-  const todayAmountToOwner = bookings
-    .filter((booking) => ['accepted', 'payment_pending', 'active'].includes(booking.status))
-    .filter((booking) => {
-      const start = startOfDay(new Date(booking.start_date))
-      const end = startOfDay(new Date(booking.end_date))
-      return start <= today && today <= end
-    })
-    .reduce((sum, booking) => sum + getDailyBookingAmount(booking), 0)
-  const monthAmount = payableBookings
-    .filter((booking) => isSameMonth(new Date(booking.created_at), thisMonth, thisYear))
-    .reduce((sum, booking) => sum + Number(booking.total_amount || 0), 0)
-  const yearAmount = payableBookings
-    .filter((booking) => new Date(booking.created_at).getFullYear() === thisYear)
-    .reduce((sum, booking) => sum + Number(booking.total_amount || 0), 0)
-  const monthLabels = getRecentMonthLabels()
-  const monthlyAmounts = monthLabels.map((month) => ({
-    month,
-    amount: payableBookings.reduce((sum, booking) => {
-      const bookingMonth = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(booking.created_at))
-      return bookingMonth === month ? sum + Number(booking.total_amount || 0) : sum
-    }, 0),
-  }))
-  const totalBookings = bookings.length
-
   if (loading) return <LoadingSkeleton type="detail" count={3} />
+
+  const kycPassed = isKycApproved(kycStatus)
 
   return (
     <div className="space-y-6">
@@ -170,90 +151,113 @@ export function DriverDashboardPage() {
 
       {user && <KYCAlert status={kycStatus} />}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
-        <StatsCard title="Today To Owner" value={formatCurrency(todayAmountToOwner)} icon={<DollarSign className="w-5 h-5" />} />
-        <StatsCard title="This Month" value={formatCurrency(monthAmount)} icon={<CalendarCheck className="w-5 h-5" />} />
-        <StatsCard title="This Year" value={formatCurrency(yearAmount)} icon={<DollarSign className="w-5 h-5" />} />
-        <StatsCard title="Requests Sent" value={totalBookings} icon={<Clock className="w-5 h-5" />} />
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                Driver workspace
+              </p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">
+                Everything you need to rent cars from verified owners
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                Use this dashboard as a starting point for the whole driver workflow:
+                verification, browsing cars, rental requests, payments, agreements,
+                notifications, and profile management.
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium text-slate-500">Account readiness</p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">
+                {kycPassed ? 'Ready to rent' : 'KYC required'}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {kycPassed
+                  ? 'You can browse cars and submit rental requests.'
+                  : 'Complete KYC first to unlock booking features.'}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {featureCards.map((feature) => {
+          const Icon = feature.icon
+          const locked = !kycPassed && !['/driver/documents', '/driver/profile', '/driver/notifications'].includes(feature.path)
+
+          return (
+            <Card key={feature.path} className="h-full transition-shadow hover:shadow-md">
+              <CardContent className="flex h-full flex-col p-4 sm:p-5">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-950">{feature.title}</h3>
+                <p className="mt-2 flex-1 text-sm leading-6 text-slate-500">{feature.description}</p>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  {locked ? (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                      KYC required
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                      Available
+                    </span>
+                  )}
+                  <Link to={feature.path}>
+                    <Button size="sm" variant="outline" className="gap-1">
+                      {feature.action} <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] sm:gap-6">
-        <Card className="overflow-hidden border-slate-200">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <Card>
           <CardContent className="p-4 sm:p-6">
-            <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-950">Monthly Amounts</h2>
-                <p className="text-xs text-muted-foreground">Rental amounts from your accepted, active, and completed bookings.</p>
-              </div>
-              <p className="text-lg font-semibold text-emerald-700">{formatCurrency(yearAmount)}</p>
-            </div>
-
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyAmounts} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 12 }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 12 }}
-                    tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`}
-                    width={44}
-                  />
-                  <Tooltip
-                    cursor={{ fill: '#ecfdf5' }}
-                    formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
-                    labelClassName="text-xs text-slate-500"
-                    contentStyle={{
-                      borderRadius: 8,
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 10px 24px rgb(15 23 42 / 0.08)',
-                    }}
-                  />
-                  <Bar dataKey="amount" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={44} />
-                </BarChart>
-              </ResponsiveContainer>
+            <h2 className="text-sm font-semibold text-slate-950">Driver workflow</h2>
+            <div className="mt-4 space-y-3">
+              {workflowSteps.map((step, index) => (
+                <div key={step} className="flex items-center gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+                    {index + 1}
+                  </span>
+                  <p className="text-sm text-slate-600">{step}</p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-sm">Recent Bookings</h2>
+            <h2 className="text-sm font-semibold text-slate-950">Quick start</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              New drivers should complete KYC first. After approval, browse available cars,
+              open a car detail page to review full terms, and submit a rental request.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to="/driver/documents">
+                <Button size="sm" variant={kycPassed ? 'outline' : 'default'}>
+                  Complete KYC
+                </Button>
+              </Link>
+              <Link to="/driver/cars">
+                <Button size="sm" variant="outline">
+                  Browse Cars
+                </Button>
+              </Link>
               <Link to="/driver/bookings">
-                <Button size="sm" variant="ghost" className="text-xs gap-1">
-                  View All <ArrowRight className="w-3 h-3" />
+                <Button size="sm" variant="outline">
+                  My Booking
                 </Button>
               </Link>
             </div>
-            {bookings.length > 0 ? (
-              <div className="space-y-3">
-                {bookings.slice(0, 5).map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between gap-2 py-2 border-b last:border-0">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {booking.car?.brand} {booking.car?.model}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-sm font-semibold">{formatCurrency(booking.total_amount)}</span>
-                      <StatusBadge status={booking.status} type="booking" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">No recent bookings</p>
-            )}
           </CardContent>
         </Card>
       </div>

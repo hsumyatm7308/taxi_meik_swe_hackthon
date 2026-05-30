@@ -145,7 +145,7 @@ export function DriverCarDetailPage() {
 
       <div className="relative rounded-xl overflow-hidden bg-muted aspect-[16/9] sm:aspect-[16/7]">
         <img
-          src={photos[imgIdx]?.url || '/placeholder-car.jpg'}
+          src={photos[imgIdx]?.url || '/placeholder-car.svg'}
           alt={`${car.brand} ${car.model}`}
           className="w-full h-full object-cover"
         />

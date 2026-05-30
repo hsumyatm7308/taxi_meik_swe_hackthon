@@ -5,6 +5,26 @@ import { auth } from "../src/lib/auth.js";
 const PASSWORD = "Password123!";
 const now = new Date();
 const approvedAt = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+const seedCarImageSets = [
+  {
+    front: "/uploads/kyc/1780046362055-bji6c_car.jpg",
+    back: "/uploads/kyc/1780046362056-ftmi56_car.jpg",
+    left: "/uploads/kyc/1780046362055-jotvhp_car.jpg",
+    right: "/uploads/kyc/1780046362056-e6py3g_banner_img.jpg",
+  },
+  {
+    front: "/uploads/kyc/1780028805462-iin2jl_car.jpg",
+    back: "/uploads/kyc/1780028805462-c6yjo_car.jpg",
+    left: "/uploads/kyc/1780028805461-2vdhqf_banner_img.jpg",
+    right: "/uploads/kyc/1780028805457-r97vt_Screenshot_2026_05_27_at_9.00.53___PM.png",
+  },
+  {
+    front: "/uploads/kyc/1780063123176-5x4wyi_car.jpg",
+    back: "/uploads/kyc/1780063123176-ba1rcs_car.jpg",
+    left: "/uploads/kyc/1780063123179-znqu5l_banner_img.jpg",
+    right: "/uploads/kyc/1780063123177-gmdl5_banner_img.jpg",
+  },
+];
 
 type SeedUser = {
   email: string;
@@ -155,6 +175,12 @@ async function upsertCar(params: {
   color: string;
   price: string;
 }) {
+  const imageSet =
+    seedCarImageSets[
+      params.licenseNumber.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) %
+        seedCarImageSets.length
+    ]!;
+
   const car = await prisma.car.upsert({
     where: { licenseNumber: params.licenseNumber },
     update: {
@@ -200,18 +226,18 @@ async function upsertCar(params: {
   await prisma.carImage.upsert({
     where: { carId: car.id },
     update: {
-      frontImage: "/uploads/cars/seed-front.jpg",
-      backImage: "/uploads/cars/seed-back.jpg",
-      leftImage: "/uploads/cars/seed-left.jpg",
-      rightImage: "/uploads/cars/seed-right.jpg",
+      frontImage: imageSet.front,
+      backImage: imageSet.back,
+      leftImage: imageSet.left,
+      rightImage: imageSet.right,
     },
     create: {
       id: crypto.randomUUID(),
       carId: car.id,
-      frontImage: "/uploads/cars/seed-front.jpg",
-      backImage: "/uploads/cars/seed-back.jpg",
-      leftImage: "/uploads/cars/seed-left.jpg",
-      rightImage: "/uploads/cars/seed-right.jpg",
+      frontImage: imageSet.front,
+      backImage: imageSet.back,
+      leftImage: imageSet.left,
+      rightImage: imageSet.right,
     },
   });
 
