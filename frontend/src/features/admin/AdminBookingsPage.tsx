@@ -57,11 +57,11 @@ export function AdminBookingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">All Bookings</h1>
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="requested">Requested</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+        <TabsList className="bg-slate-100 p-1 border border-slate-200">
+          <TabsTrigger value="all" className="text-slate-600 data-[state=active]:bg-primary data-[state=active]:text-white">All</TabsTrigger>
+          <TabsTrigger value="requested" className="text-slate-600 data-[state=active]:bg-primary data-[state=active]:text-white">Requested</TabsTrigger>
+          <TabsTrigger value="active" className="text-slate-600 data-[state=active]:bg-primary data-[state=active]:text-white">Active</TabsTrigger>
+          <TabsTrigger value="completed" className="text-slate-600 data-[state=active]:bg-primary data-[state=active]:text-white">Completed</TabsTrigger>
         </TabsList>
         <TabsContent value={activeTab} className="mt-4">
           {bookings.length === 0 ? (
