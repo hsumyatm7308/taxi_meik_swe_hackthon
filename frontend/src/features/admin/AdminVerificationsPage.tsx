@@ -14,9 +14,10 @@ import { formatDate } from '@/utils/format'
 import {
   CheckCircle2, XCircle, Eye, User, Phone, Mail, Calendar,
   ShieldCheck, ShieldAlert, Clock, Loader2, ZoomIn, X,
-  ChevronRight, History, ClipboardList,
+  ChevronRight, History, ClipboardList, Car,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { API_BASE_URL } from '@/constants'
 
 interface KYCDriver {
   id: string
@@ -34,6 +35,7 @@ interface KYCDriver {
     email: string
     phone: string | null
     createdAt: string
+    role?: string
   }
 }
 
@@ -43,15 +45,38 @@ interface Props {
 
 // ─── Shared Document Grid ─────────────────────────────────────────────────────
 function DocumentGrid({ driver, onLightbox }: { driver: KYCDriver; onLightbox: (url: string) => void }) {
-  const docs = [
-    { label: 'NRC Front Side', url: driver.nrcFrontUrl },
-    { label: 'NRC Back Side', url: driver.nrcBackUrl },
-    { label: 'Selfie / Photo', url: driver.selfieUrl },
-    { label: 'Driving License Front', url: driver.drivingLicenseFrontUrl },
-    { label: 'Driving License Back', url: driver.drivingLicenseBackUrl },
-  ]
+  const isOwner = driver.user.role === 'OWNER'
+  const isCar = driver.user.role === 'CAR'
+  
+  let docs: { label: string; url: string | null }[] = []
+  
+  if (isCar) {
+    docs = [
+      { label: 'Owner Book', url: driver.nrcFrontUrl },
+      { label: 'Front Image', url: driver.nrcBackUrl },
+      { label: 'Back Image', url: driver.selfieUrl },
+      { label: 'Left Image', url: driver.drivingLicenseFrontUrl },
+      { label: 'Right Image', url: driver.drivingLicenseBackUrl },
+    ]
+  } else {
+    docs = [
+      { label: 'NRC Front Side', url: driver.nrcFrontUrl },
+      { label: 'NRC Back Side', url: driver.nrcBackUrl },
+      { label: 'Selfie / Photo', url: driver.selfieUrl },
+    ]
+    if (!isOwner) {
+      docs.push(
+        { label: 'Driving License Front', url: driver.drivingLicenseFrontUrl },
+        { label: 'Driving License Back', url: driver.drivingLicenseBackUrl }
+      )
+    }
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className={cn(
+      "grid gap-4",
+      isOwner ? "grid-cols-1 md:grid-cols-3" : isCar ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-5" : "grid-cols-1 md:grid-cols-3"
+    )}>
       {docs.map(({ label, url }) => (
         <div key={label} className="space-y-1.5">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
@@ -81,7 +106,11 @@ function DriverInfoStrip({ driver }: { driver: KYCDriver }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm">
       <div className="flex items-center gap-2 text-muted-foreground">
-        <User className="w-4 h-4 shrink-0" />
+        {driver.user.role === 'CAR' ? (
+          <Car className="w-4 h-4 shrink-0" />
+        ) : (
+          <User className="w-4 h-4 shrink-0" />
+        )}
         <span className="font-medium text-foreground truncate">{driver.user.name}</span>
       </div>
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -150,6 +179,80 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
   )
 }
 
+const mapOwnerToKycDriver = (owner: any): KYCDriver => {
+  const nrcFrontDoc = owner.owner_documents?.find((d: any) => d.type === 'nrc_front')
+  const nrcBackDoc = owner.owner_documents?.find((d: any) => d.type === 'nrc_back')
+  
+  const getOwnerDocUrl = (url: string | null) => {
+    if (!url) return null
+    if (/^(https?:\/\/|data:|blob:)/i.test(url)) return url
+    const backendBase = API_BASE_URL.replace('/api', '')
+    return `${backendBase}${url.startsWith('/') ? url : `/${url}`}`
+  }
+
+  const statusMap: Record<string, string> = {
+    verified: 'APPROVED',
+    rejected: 'REJECTED',
+    pending: 'PENDING'
+  }
+
+  return {
+    id: owner.id,
+    kycStatus: statusMap[owner.verification_status] || 'PENDING',
+    nrcFrontUrl: nrcFrontDoc ? getOwnerDocUrl(nrcFrontDoc.file_url) : null,
+    nrcBackUrl: nrcBackDoc ? getOwnerDocUrl(nrcBackDoc.file_url) : null,
+    selfieUrl: getOwnerDocUrl(owner.profile_photo_url),
+    drivingLicenseFrontUrl: null,
+    drivingLicenseBackUrl: null,
+    nrcText: owner.rejection_reason || null,
+    updatedAt: owner.updated_at,
+    user: {
+      id: owner.id,
+      name: owner.name,
+      email: owner.email,
+      phone: owner.phone || '',
+      createdAt: owner.created_at,
+      role: 'OWNER'
+    }
+  }
+}
+
+const mapCarToKycDriver = (car: any): KYCDriver => {
+  const statusMap: Record<string, string> = {
+    verified: 'APPROVED',
+    approved: 'APPROVED',
+    rejected: 'REJECTED',
+    pending: 'PENDING'
+  }
+
+  const getCarDocUrl = (url: string | null) => {
+    if (!url) return null
+    if (/^(https?:\/\/|data:|blob:)/i.test(url)) return url
+    const backendBase = API_BASE_URL.replace('/api', '')
+    return `${backendBase}${url.startsWith('/') ? url : `/${url}`}`
+  }
+
+  return {
+    id: car.id,
+    kycStatus: statusMap[car.status] || 'PENDING',
+    nrcFrontUrl: car.owner_book ? getCarDocUrl(car.owner_book) : null,
+    nrcBackUrl: car.images?.front_image ? getCarDocUrl(car.images.front_image) : null,
+    selfieUrl: car.images?.back_image ? getCarDocUrl(car.images.back_image) : null,
+    drivingLicenseFrontUrl: car.images?.left_image ? getCarDocUrl(car.images.left_image) : null,
+    drivingLicenseBackUrl: car.images?.right_image ? getCarDocUrl(car.images.right_image) : null,
+    nrcText: null,
+    updatedAt: car.updated_at,
+    user: {
+      id: car.id,
+      name: `${car.brand} ${car.model}`,
+      email: `Owner: ${car.owner?.name || 'Unknown'}`,
+      phone: car.owner?.phone || '',
+      createdAt: car.created_at,
+      role: 'CAR'
+    }
+  }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function AdminVerificationsPage({ type }: Props) {
   const { addToast } = useToast()
@@ -183,49 +286,48 @@ export function AdminVerificationsPage({ type }: Props) {
   const loadPending = useCallback(async () => {
     try {
       setPendingLoading(true)
-      const data = await adminApi.getPendingDrivers()
-      setPending(data || [])
+      if (type === 'owners') {
+        const data = await adminApi.getPendingOwners()
+        setPending((data || []).map(mapOwnerToKycDriver))
+      } else if (type === 'cars') {
+        const data = await adminApi.getPendingCars()
+        setPending((data || []).map(mapCarToKycDriver))
+      } else {
+        const data = await adminApi.getPendingDrivers()
+        setPending(data || [])
+      }
     } catch {
       setPending([])
     } finally {
       setPendingLoading(false)
     }
-  }, [])
+  }, [type])
 
   const loadHistory = useCallback(async () => {
     try {
       setHistoryLoading(true)
-      const data = await adminApi.getKYCHistory()
-      setHistory(data || [])
+      if (type === 'owners') {
+        const data = await adminApi.getOwnersHistory()
+        setHistory((data || []).map(mapOwnerToKycDriver))
+      } else if (type === 'cars') {
+        const data = await adminApi.getCarsHistory()
+        setHistory((data || []).map(mapCarToKycDriver))
+      } else {
+        const data = await adminApi.getKYCHistory()
+        setHistory(data || [])
+      }
     } catch {
       setHistory([])
     } finally {
       setHistoryLoading(false)
       setHistoryFetched(true)
     }
-  }, [])
-
-  const loadOther = useCallback(async () => {
-    try {
-      setLoading(true)
-      let data: any[]
-      if (type === 'owners') data = await adminApi.getPendingOwners()
-      else data = await adminApi.getPendingCars()
-      setItems(data || [])
-    } catch {
-      setItems([])
-    } finally {
-      setLoading(false)
-    }
   }, [type])
 
   useEffect(() => {
-    if (type === 'drivers') {
-      loadPending()
-    } else {
-      loadOther()
-    }
-  }, [type, loadPending, loadOther])
+    setHistoryFetched(false)
+    loadPending()
+  }, [type, loadPending])
 
   const openReview = (driver: KYCDriver, readOnly: boolean) => {
     setSelectedDriver(driver)
@@ -236,8 +338,16 @@ export function AdminVerificationsPage({ type }: Props) {
     if (!selectedDriver) return
     try {
       setProcessing(true)
-      await adminApi.reviewDriverKYC(selectedDriver.id, 'APPROVED')
-      addToast(`✅ ${selectedDriver.user.name}'s KYC has been approved.`, 'success')
+      if (type === 'owners') {
+        await adminApi.verifyOwner(selectedDriver.id, 'verified')
+        addToast(`✅ ${selectedDriver.user.name}'s account has been verified.`, 'success')
+      } else if (type === 'cars') {
+        await adminApi.verifyCar(selectedDriver.id, 'verified')
+        addToast(`✅ ${selectedDriver.user.name} has been verified.`, 'success')
+      } else {
+        await adminApi.reviewDriverKYC(selectedDriver.id, 'APPROVED')
+        addToast(`✅ ${selectedDriver.user.name}'s KYC has been approved.`, 'success')
+      }
       setPending((prev) => prev.filter((d) => d.id !== selectedDriver.id))
       setSelectedDriver(null)
       // Invalidate history cache so it refreshes next time
@@ -253,8 +363,16 @@ export function AdminVerificationsPage({ type }: Props) {
     if (!selectedDriver) return
     try {
       setProcessing(true)
-      await adminApi.reviewDriverKYC(selectedDriver.id, 'REJECTED', rejectionReason || undefined)
-      addToast(`❌ ${selectedDriver.user.name}'s KYC has been rejected.`, 'success')
+      if (type === 'owners') {
+        await adminApi.verifyOwner(selectedDriver.id, 'rejected', rejectionReason || undefined)
+        addToast(`❌ ${selectedDriver.user.name}'s verification request has been rejected.`, 'success')
+      } else if (type === 'cars') {
+        await adminApi.verifyCar(selectedDriver.id, 'rejected', rejectionReason || undefined)
+        addToast(`❌ ${selectedDriver.user.name}'s verification request has been rejected.`, 'success')
+      } else {
+        await adminApi.reviewDriverKYC(selectedDriver.id, 'REJECTED', rejectionReason || undefined)
+        addToast(`❌ ${selectedDriver.user.name}'s KYC has been rejected.`, 'success')
+      }
       setPending((prev) => prev.filter((d) => d.id !== selectedDriver.id))
       setSelectedDriver(null)
       setShowRejectDialog(false)
@@ -267,66 +385,15 @@ export function AdminVerificationsPage({ type }: Props) {
     }
   }
 
-  const handleReviewOther = async (item: any, status: 'verified' | 'rejected') => {
-    try {
-      if (type === 'owners') {
-        await adminApi.verifyOwner(item.id, status)
-      } else if (type === 'cars') {
-        await adminApi.verifyCar(item.id, status)
-      }
-
-      setItems((prev) => prev.filter((current) => current.id !== item.id))
-      addToast(`${status === 'verified' ? 'Approved' : 'Rejected'} successfully.`, 'success')
-    } catch (err: any) {
-      addToast(err.response?.data?.error || `Failed to ${status === 'verified' ? 'approve' : 'reject'}.`, 'error')
-    }
-  }
-
-  // ─── Non-driver type simple view ─────────────────────────────────────────
-  if (type !== 'drivers') {
-    if (loading) return <div className="space-y-6"><h1 className="text-2xl font-bold">{title}</h1><LoadingSkeleton type="list" count={5} /></div>
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed border-slate-200">
-            <ShieldCheck className="w-10 h-10 text-emerald-500 mb-3" />
-            <p className="font-semibold">All clear!</p>
-            <p className="text-sm text-muted-foreground">No pending {type} verifications.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {items.map((item: any) => (
-              <Card key={item.id}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{item.name || `${item.brand} ${item.model}`}</p>
-                    <p className="text-sm text-muted-foreground">{item.email || item.city}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="success" onClick={() => handleReviewOther(item, 'verified')}>
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Approve
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleReviewOther(item, 'rejected')}>
-                      <XCircle className="w-4 h-4 mr-1" /> Reject
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // ─── Driver KYC — Tabbed View ─────────────────────────────────────────────
+  // ─── Driver, Owner, & Car — Tabbed View ─────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">{title}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Manage driver identity verification requests</p>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Manage {type === 'owners' ? 'owner' : type === 'cars' ? 'vehicle' : 'driver'} identity verification requests
+        </p>
       </div>
 
       <Tabs defaultValue="pending" onValueChange={(tab) => {
@@ -372,7 +439,9 @@ export function AdminVerificationsPage({ type }: Props) {
                 </div>
                 <div>
                   <p className="font-semibold text-lg">All clear!</p>
-                  <p className="text-sm text-muted-foreground">No pending driver KYC verifications.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No pending {type === 'owners' ? 'owner' : type === 'cars' ? 'vehicle' : 'driver KYC'} verifications.
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -389,7 +458,11 @@ export function AdminVerificationsPage({ type }: Props) {
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                              <User className="w-5 h-5 text-amber-600" />
+                              {driver.user.role === 'CAR' ? (
+                                <Car className="w-5 h-5 text-amber-600" />
+                              ) : (
+                                <User className="w-5 h-5 text-amber-600" />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold truncate">{driver.user.name}</p>
@@ -431,7 +504,9 @@ export function AdminVerificationsPage({ type }: Props) {
               <History className="w-10 h-10 text-muted-foreground/40" />
               <div>
                 <p className="font-semibold">No history yet</p>
-                <p className="text-sm text-muted-foreground">Approved or rejected drivers will appear here.</p>
+                <p className="text-sm text-muted-foreground">
+                  Approved or rejected {type === 'owners' ? 'owners' : type === 'cars' ? 'vehicles' : 'drivers'} will appear here.
+                </p>
               </div>
             </div>
           ) : (
@@ -487,7 +562,7 @@ export function AdminVerificationsPage({ type }: Props) {
 
       {/* ─── KYC Review / Detail Modal ─────────────────────────────────────── */}
       <Dialog open={!!selectedDriver} onOpenChange={(o) => { if (!o) setSelectedDriver(null) }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto pb-10">
           {selectedDriver && (
             <>
               <DialogHeader>
@@ -495,19 +570,21 @@ export function AdminVerificationsPage({ type }: Props) {
                   {isReadOnly ? (
                     <>
                       <KycBadge status={selectedDriver.kycStatus} />
-                      <span className="ml-1">KYC Record — {selectedDriver.user.name}</span>
+                      <span className="ml-1">
+                        {type === 'owners' ? 'Owner Verification' : type === 'cars' ? 'Car Verification' : 'KYC Record'} — {selectedDriver.user.name}
+                      </span>
                     </>
                   ) : (
                     <>
                       <ShieldAlert className="w-5 h-5 text-amber-500" />
-                      KYC Review — {selectedDriver.user.name}
+                      {type === 'owners' ? 'Owner Review' : type === 'cars' ? 'Car Review' : 'KYC Review'} — {selectedDriver.user.name}
                     </>
                   )}
                 </DialogTitle>
                 <DialogDescription>
                   {isReadOnly
                     ? 'Read-only view of the submitted documents and final decision.'
-                    : 'Inspect the submitted identity documents, then approve or reject this driver.'}
+                    : `Inspect the submitted ${type === 'cars' ? 'vehicle' : 'identity'} documents, then approve or reject this ${type === 'owners' ? 'owner' : type === 'cars' ? 'car' : 'driver'}.`}
                 </DialogDescription>
               </DialogHeader>
 
@@ -528,12 +605,12 @@ export function AdminVerificationsPage({ type }: Props) {
 
               <DialogFooter className="gap-2 pt-2">
                 {isReadOnly ? (
-                  <Button variant="outline" onClick={() => setSelectedDriver(null)}>
+                  <Button variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900" onClick={() => setSelectedDriver(null)}>
                     Close
                   </Button>
                 ) : (
                   <>
-                    <Button variant="outline" onClick={() => setSelectedDriver(null)} disabled={processing}>
+                    <Button variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900" onClick={() => setSelectedDriver(null)} disabled={processing}>
                       Close
                     </Button>
                     <Button
@@ -567,10 +644,10 @@ export function AdminVerificationsPage({ type }: Props) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
-              <ShieldAlert className="w-5 h-5" /> Reject KYC Submission
+              <ShieldAlert className="w-5 h-5" /> Reject {type === 'owners' ? 'Owner Verification' : type === 'cars' ? 'Car Verification' : 'KYC Submission'}
             </DialogTitle>
             <DialogDescription>
-              Optionally provide a short reason for rejection. The driver will need to re-upload their documents.
+              Optionally provide a short reason for rejection. The {type === 'owners' ? 'owner' : type === 'cars' ? 'car owner' : 'driver'} will need to re-submit their documents.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -588,7 +665,7 @@ export function AdminVerificationsPage({ type }: Props) {
             />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => { setShowRejectDialog(false); setRejectionReason('') }} disabled={processing}>
+            <Button variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900" onClick={() => { setShowRejectDialog(false); setRejectionReason('') }} disabled={processing}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleRejectConfirm} disabled={processing} className="gap-2">

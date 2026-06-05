@@ -7,6 +7,7 @@ import { auth } from './lib/auth.js';
 import prisma from './lib/prisma.js';
 import crypto from 'crypto';
 import { requireUser } from './lib/api-auth.js';
+import { hashPassword } from 'better-auth/crypto';
 import {
   serializeBooking,
   serializeDeposit,
@@ -72,6 +73,54 @@ app.get("/api/user/profile", async (req, res) => {
     return res.json({ data: serializeUser(user) });
   } catch (error: any) {
     console.error("Get user profile error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/api/user/profile", async (req, res) => {
+  try {
+    const authUser = await requireUser(req, res);
+    if (!authUser) return;
+
+    const { name, phone, password } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({ error: "Name is required" });
+    }
+
+    const updateData: any = {
+      name: name.trim(),
+    };
+
+    if (phone && phone.trim() !== "") {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          phone: phone.trim(),
+          NOT: { id: authUser.id }
+        }
+      });
+      if (existingUser) {
+        return res.status(400).json({ error: "Phone number is already in use" });
+      }
+      updateData.phone = phone.trim();
+    }
+
+    if (password && password.trim() !== "") {
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters long" });
+      }
+      updateData.passwordHash = await hashPassword(password);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: authUser.id },
+      data: updateData,
+      include: { ownerProfile: true, driverProfile: true },
+    });
+
+    return res.json({ data: serializeUser(updatedUser) });
+  } catch (error: any) {
+    console.error("Update user profile error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

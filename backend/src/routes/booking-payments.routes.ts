@@ -234,6 +234,35 @@ router.get("/admin/payments/pending", async (req, res) => {
   }
 });
 
+router.get("/admin/payments/history", async (req, res) => {
+  try {
+    const admin = await requireUser(req, res, ["ADMIN"]);
+    if (!admin) return;
+
+    const payments = await prisma.$queryRaw<Array<any>>`
+      SELECT
+        p.*,
+        payer.full_name AS transfer_from_name,
+        'Taxi Meik Swe Agency' AS transfer_to_name,
+        driver.full_name AS driver_name,
+        owner.full_name AS owner_name
+      FROM booking_payments p
+      INNER JOIN car_applications a ON a.id = p.booking_id
+      LEFT JOIN users payer ON payer.id = p.user_id
+      LEFT JOIN users driver ON driver.id = a.driver_id
+      LEFT JOIN users owner ON owner.id = a.owner_id
+      WHERE p.status != 'under_review'
+      ORDER BY p.updated_at DESC, p.created_at DESC
+    `;
+
+    return res.json({ data: payments.map(serializePayment) });
+  } catch (error: any) {
+    console.error("Get payment history error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 router.post("/admin/payments/:id/confirm", async (req, res) => {
   try {
     const admin = await requireUser(req, res, ["ADMIN"]);

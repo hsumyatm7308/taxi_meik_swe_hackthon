@@ -29,6 +29,11 @@ export const paymentsApi = {
     return res.data.data
   },
 
+  getPaymentsHistory: async (): Promise<Payment[]> => {
+    const res = await apiClient.get('/admin/payments/history')
+    return res.data.data
+  },
+
   confirmPayment: async (id: string | number, notes?: string): Promise<Payment> => {
     const res = await apiClient.post(`/admin/payments/${id}/confirm`, { notes })
     return res.data.data
@@ -39,3 +44,4 @@ export const paymentsApi = {
     return res.data.data
   },
 }
+

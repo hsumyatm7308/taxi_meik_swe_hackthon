@@ -32,7 +32,7 @@ export function serializeOwnerDocuments(ownerProfile: any) {
       owner_profile_id: ownerProfile.id,
       type: "nrc_front",
       file_path: ownerProfile.nrcFrontImage,
-      file_url: ownerProfile.nrcFrontImage,
+      file_url: toPublicUrl(ownerProfile.nrcFrontImage),
       status: ownerProfile.nrcFrontImage ? status : "not_uploaded",
       admin_notes: null,
       uploaded_at: uploadedAt,
@@ -43,7 +43,7 @@ export function serializeOwnerDocuments(ownerProfile: any) {
       owner_profile_id: ownerProfile.id,
       type: "nrc_back",
       file_path: ownerProfile.nrcBackImage,
-      file_url: ownerProfile.nrcBackImage,
+      file_url: toPublicUrl(ownerProfile.nrcBackImage),
       status: ownerProfile.nrcBackImage ? status : "not_uploaded",
       admin_notes: null,
       uploaded_at: uploadedAt,
@@ -69,14 +69,20 @@ export function serializeUser(user: any) {
     phone: user.phone || "",
     role: user.role,
     email_verified_at: user.emailVerified ? user.updatedAt.toISOString() : null,
-    verification_status: toUserVerificationStatus(verificationStatus),
+    verification_status: user.isActive === false ? "suspended" : toUserVerificationStatus(verificationStatus),
     suspension_reason: null,
     profile_photo_url: user.profilePhoto || null,
     created_at: user.createdAt.toISOString(),
     updated_at: user.updatedAt.toISOString(),
     owner_documents: serializeOwnerDocuments(user.ownerProfile),
+    rejection_reason: user.role === "OWNER" ? (user.ownerProfile?.nrcText || null) : null,
+    nrc_number: user.role === "DRIVER" ? (user.driverProfile?.nrcText || user.nrcNumber) : (user.role === "OWNER" ? (user.ownerProfile?.nrcText || user.nrcNumber) : null),
+    address: user.role === "DRIVER" ? (user.driverProfile?.address || user.address) : (user.role === "OWNER" ? (user.ownerProfile?.address || user.address) : null),
+    city: user.role === "DRIVER" ? (user.driverProfile?.city || user.city) : (user.role === "OWNER" ? (user.ownerProfile?.city || user.city) : null),
+    township: user.role === "DRIVER" ? (user.driverProfile?.township || user.township) : (user.role === "OWNER" ? (user.ownerProfile?.township || user.township) : null),
   };
 }
+
 
 export function serializeOwnerProfile(ownerProfile: any, user?: any) {
   if (!ownerProfile) return null;
@@ -259,7 +265,7 @@ export function serializePayment(payment: any) {
     commission_rate: Number(payment.commission_rate || 0),
     commission_amount: Number(payment.commission_amount || 0),
     transaction_id: payment.transaction_id,
-    screenshot_url: payment.screenshot_url,
+    screenshot_url: toPublicUrl(payment.screenshot_url),
     status: payment.status,
     admin_notes: payment.admin_notes,
     paid_at: payment.paid_at?.toISOString?.() || payment.paid_at || null,

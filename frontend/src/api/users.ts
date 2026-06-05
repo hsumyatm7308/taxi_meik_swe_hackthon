@@ -7,7 +7,7 @@ export const usersApi = {
     return res.data.data
   },
 
-  updateProfile: async (data: Partial<User>): Promise<User> => {
+  updateProfile: async (data: Partial<User> & { password?: string }): Promise<User> => {
     const res = await apiClient.put('/user/profile', data)
     return res.data.data
   },

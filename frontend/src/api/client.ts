@@ -34,4 +34,69 @@ const apiClient = axios.create({
 //   },
 // )
 
+const cacheMap = new Map<string, { data: any; timestamp: number }>()
+const CACHE_TTL_MS = 30 * 1000 // 30 seconds cache TTL
+
+const getCacheKey = (url: string, params?: any) => {
+  return url + '?' + (params ? JSON.stringify(params) : '')
+}
+
+export const apiCache = {
+  has: (url: string, params?: any): boolean => {
+    const key = getCacheKey(url, params)
+    const cached = cacheMap.get(key)
+    return !!(cached && Date.now() - cached.timestamp < CACHE_TTL_MS)
+  },
+  get: (url: string, params?: any): any | null => {
+    const key = getCacheKey(url, params)
+    const cached = cacheMap.get(key)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data
+    }
+    return null
+  },
+  set: (url: string, params: any, data: any) => {
+    const key = getCacheKey(url, params)
+    cacheMap.set(key, { data, timestamp: Date.now() })
+  },
+  clear: () => {
+    cacheMap.clear()
+  },
+}
+
+// Wrap Axios GET requests to return cached values if valid
+const originalGet = apiClient.get
+apiClient.get = async function (url: string, config?: any) {
+  const params = config?.params
+  if (apiCache.has(url, params)) {
+    return apiCache.get(url, params)
+  }
+  const response = await originalGet.call(this, url, config)
+  apiCache.set(url, params, response)
+  return response
+}
+
+// Invalidate full cache on mutations
+const clearCacheOnMutation = () => {
+  apiCache.clear()
+}
+
+const originalPost = apiClient.post
+apiClient.post = async function (url: string, data?: any, config?: any) {
+  clearCacheOnMutation()
+  return originalPost.call(this, url, data, config)
+}
+
+const originalPut = apiClient.put
+apiClient.put = async function (url: string, data?: any, config?: any) {
+  clearCacheOnMutation()
+  return originalPut.call(this, url, data, config)
+}
+
+const originalDelete = apiClient.delete
+apiClient.delete = async function (url: string, config?: any) {
+  clearCacheOnMutation()
+  return originalDelete.call(this, url, config)
+}
+
 export default apiClient

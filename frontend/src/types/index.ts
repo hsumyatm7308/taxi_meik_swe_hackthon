@@ -103,7 +103,12 @@ export interface User {
   profile_photo_url: string | null
   created_at: string
   updated_at: string
+  nrc_number?: string | null
+  address?: string | null
+  city?: string | null
+  township?: string | null
 }
+
 
 export interface OwnerProfile {
   id: string
@@ -482,6 +487,7 @@ export interface AdminDashboardStats {
   total_users: number
   total_owners: number
   total_drivers: number
+  total_cars: number
   pending_owner_verifications: number
   pending_driver_verifications: number
   pending_car_verifications: number

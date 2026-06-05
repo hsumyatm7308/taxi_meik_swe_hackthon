@@ -57,15 +57,12 @@ const adminNav: NavItem[] = [
   { label: 'Verify Cars', icon: <Car className="w-4 h-4" />, path: '/admin/verifications/cars' },
   { label: 'Bookings', icon: <CalendarCheck className="w-4 h-4" />, path: '/admin/bookings' },
   { label: 'Payments', icon: <DollarSign className="w-4 h-4" />, path: '/admin/payments' },
-  { label: 'Disputes', icon: <AlertTriangle className="w-4 h-4" />, path: '/admin/disputes' },
   { label: 'Users', icon: <Users className="w-4 h-4" />, path: '/admin/users' },
-  { label: 'Deposits', icon: <Landmark className="w-4 h-4" />, path: '/admin/deposits' },
   { label: 'Notifications', icon: <Bell className="w-4 h-4" />, path: '/admin/notifications' },
-  { label: 'Audit Log', icon: <ScrollText className="w-4 h-4" />, path: '/admin/audit-log' },
 ]
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false)
+  const collapsed = false
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const { pathname } = useLocation()
@@ -114,13 +111,24 @@ export function Sidebar() {
 
   return (
     <>
-      <button
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg border border-white/15 bg-slate-950 text-white shadow-lg transition hover:bg-slate-900"
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label={mobileOpen ? 'Close sidebar' : 'Open sidebar'}
-      >
-        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+      {/* Mobile Menu Trigger Button */}
+      {!mobileOpen && (
+        <button
+          className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg border border-white/15 bg-slate-950 text-white shadow-lg transition hover:bg-slate-900"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Mobile Backdrop Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-35 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
       <aside
         className={cn(
@@ -129,26 +137,22 @@ export function Sidebar() {
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className={cn(
-          'flex items-center h-16 px-4 border-b border-white/10',
-          !collapsed && 'justify-between gap-3',
-          collapsed && 'justify-center px-2',
-        )}>
-          {!collapsed && (
-            <Link to="/" className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/10 shadow-lg shadow-amber-500/10">
-                <img src={Logo} alt="" className="h-8 w-auto object-contain" />
-              </span>
-              <span className="truncate text-sm font-semibold text-white">{APP_NAME}</span>
-            </Link>
+        <div className="flex items-center h-16 px-4 border-b border-white/10 justify-between gap-3">
+          <Link to="/" className="flex min-w-0 flex-1 items-center gap-3" onClick={() => setMobileOpen(false)}>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/10 shadow-lg shadow-amber-500/10">
+              <img src={Logo} alt="" className="h-8 w-auto object-contain" />
+            </span>
+            <span className="truncate text-sm font-semibold text-white">{APP_NAME}</span>
+          </Link>
+          {mobileOpen && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="lg:hidden p-2 rounded-lg border border-white/15 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close sidebar"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-white/55 transition hover:bg-white/10 hover:text-white lg:flex"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <ChevronDown className={cn('w-4 h-4 transition-transform', collapsed ? 'rotate-90' : '-rotate-90')} />
-          </button>
         </div>
 
         <ScrollArea className="relative flex-1 py-3">

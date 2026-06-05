@@ -1,4 +1,4 @@
-import { Outlet, Link, NavLink } from "react-router-dom";
+import { Outlet, Link, NavLink, ScrollRestoration } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -7,6 +7,8 @@ import { APP_NAME } from "@/constants";
 import { useAuth } from "@/providers";
 import { getDashboardPath } from "@/utils/auth";
 import Logo from "@/assets/Logo.svg";
+import { RouteProgressBar } from "@/components/shared/RouteProgressBar";
+import { PageTransition } from "@/components/shared/PageTransition";
 
 const publicNavItems = [
   { label: "Home", path: "/", end: true },
@@ -190,8 +192,13 @@ export function PublicLayout() {
         )}
       </AnimatePresence>
 
-      <main className="flex-1">
-        <Outlet />
+      <RouteProgressBar />
+      <ScrollRestoration />
+
+      <main className="flex-1 flex flex-col">
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
 
       <footer className="border-t border-white/20 bg-white/10 backdrop-blur-2xl">

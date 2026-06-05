@@ -2,19 +2,19 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Users, Car, DollarSign, AlertTriangle, CalendarCheck, Shield, ArrowRight, CreditCard } from 'lucide-react'
+import { Users, User, Car, DollarSign, AlertTriangle, CalendarCheck, Shield, ArrowRight, CreditCard } from 'lucide-react'
 import { StatsCard } from '@/components/shared/StatsCard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
-import { adminApi } from '@/api'
+import { adminApi, apiCache } from '@/api'
 import { formatCurrency, formatDateTime } from '@/utils/format'
 import type { AdminDashboardStats } from '@/types'
 
 export function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !apiCache.has('/admin/dashboard'))
 
   useEffect(() => {
     loadDashboard()
@@ -22,6 +22,10 @@ export function AdminDashboardPage() {
 
   const loadDashboard = async () => {
     try {
+      const hasCache = apiCache.has('/admin/dashboard')
+      if (!hasCache) {
+        setLoading(true)
+      }
       const data = await adminApi.getDashboardStats()
       setStats(data)
     } catch {
@@ -44,11 +48,14 @@ export function AdminDashboardPage() {
         <p className="mt-1 text-sm text-slate-500">Platform overview and management</p>
       </motion.div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-4">
         <StatsCard title="Total Users" value={stats?.total_users || 0} icon={<Users className="w-5 h-5" />} />
+        <StatsCard title="Total Owners" value={stats?.total_owners || 0} icon={<Shield className="w-5 h-5" />} />
+        <StatsCard title="Total Drivers" value={stats?.total_drivers || 0} icon={<User className="w-5 h-5" />} />
+        <StatsCard title="Total Cars" value={stats?.total_cars || 0} icon={<Car className="w-5 h-5" />} />
+        <StatsCard title="Bookings" value={stats?.active_bookings || 0} icon={<CalendarCheck className="w-5 h-5" />} />
+        <StatsCard title="Pending Reviews" value={totalPendingVerifications} icon={<AlertTriangle className="w-5 h-5" />} />
         <StatsCard title="Total Revenue" value={formatCurrency(stats?.total_revenue || 0)} icon={<DollarSign className="w-5 h-5" />} />
-        <StatsCard title="Active Bookings" value={stats?.active_bookings || 0} icon={<CalendarCheck className="w-5 h-5" />} />
-        <StatsCard title="Pending Reviews" value={totalPendingVerifications} icon={<Shield className="w-5 h-5" />} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)] sm:gap-6">
@@ -122,33 +129,6 @@ export function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-slate-200">
-        <CardContent className="p-4 sm:p-6">
-          <h2 className="font-semibold text-sm mb-4 text-slate-950">Admin Work Queue</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: 'Owner Verifications', count: stats?.pending_owner_verifications, href: '/admin/verifications/owners', icon: <Shield className="h-4 w-4" /> },
-            { label: 'Driver Verifications', count: stats?.pending_driver_verifications, href: '/admin/verifications/drivers', icon: <Users className="h-4 w-4" /> },
-            { label: 'Car Verifications', count: stats?.pending_car_verifications, href: '/admin/verifications/cars', icon: <Car className="h-4 w-4" /> },
-            { label: 'Pending Payments', count: stats?.pending_payment_approvals, href: '/admin/payments', icon: <CreditCard className="h-4 w-4" /> },
-            { label: 'Active Disputes', count: stats?.active_disputes, href: '/admin/disputes', icon: <AlertTriangle className="h-4 w-4" /> },
-          ].map((action) => (
-            <Link key={action.label} to={action.href} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                    {action.icon}
-                  </div>
-                  <p className="text-sm font-medium text-slate-800">{action.label}</p>
-                </div>
-                {(action.count ?? 0) > 0 && <Badge variant="destructive">{action.count}</Badge>}
-              </div>
-            </Link>
-          ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

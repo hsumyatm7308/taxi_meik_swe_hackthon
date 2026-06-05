@@ -6,25 +6,33 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { adminApi } from '@/api'
+import { adminApi, apiCache } from '@/api'
 import { useToast } from '@/providers'
 import type { User } from '@/types'
 import { formatDate } from '@/utils/format'
-import { Shield, ShieldOff, User as UserIcon } from 'lucide-react'
+import { Shield, ShieldOff, User as UserIcon, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 
 export function AdminUsersPage() {
   const { addToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState('')
+  const [loading, setLoading] = useState(() => !apiCache.has('/admin/users', { role: roleFilter || undefined }))
   const [processing, setProcessing] = useState<string | number | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     loadUsers()
   }, [roleFilter])
 
+
   const loadUsers = async () => {
     try {
+      const params = { role: roleFilter || undefined }
+      const hasCache = apiCache.has('/admin/users', params)
+      if (!hasCache) {
+        setLoading(true)
+      }
       const data = await adminApi.getUsers(roleFilter || undefined)
       setUsers(data)
     } catch {
@@ -62,6 +70,10 @@ export function AdminUsersPage() {
 
   if (loading) return <LoadingSkeleton type="list" count={8} />
 
+  const filteredUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -76,24 +88,62 @@ export function AdminUsersPage() {
         </Tabs>
       </div>
 
-      {users.length === 0 ? (
-        <EmptyState title="No users found" />
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search users by name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 bg-white border border-slate-200"
+        />
+      </div>
+
+      {filteredUsers.length === 0 ? (
+        <EmptyState title={searchQuery ? "No matching users found" : "No users found"} description={searchQuery ? "Try adjusting your search term." : undefined} />
       ) : (
         <div className="space-y-3">
-          {users.map((user) => (
+          {filteredUsers.map((user) => (
+
             <motion.div key={user.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><UserIcon className="w-5 h-5" /></div>
-                      <div>
-                        <p className="font-medium">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email} &middot; <span className="capitalize">{user.role}</span></p>
-                        <p className="text-xs text-muted-foreground">Joined {formatDate(user.created_at)}</p>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0"><UserIcon className="w-5 h-5" /></div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-slate-800">{user.name}</p>
+                          <span className="text-[10px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full capitalize">
+                            {user.role.toLowerCase()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{user.email} &middot; {user.phone || 'No phone'}</p>
+                        
+                        {/* Driver/Owner NRC & Address details */}
+                        {(user.role === 'DRIVER' || user.role === 'OWNER') && (
+                          <div className="mt-2 text-xs space-y-0.5 border-t border-slate-100 pt-2 font-medium text-slate-600">
+                            {user.nrc_number && (
+                              <p>
+                                <span className="text-muted-foreground">NRC:</span>{' '}
+                                <span className="text-slate-800 font-mono">{user.nrc_number}</span>
+                              </p>
+                            )}
+                            {(user.address || user.township || user.city) && (
+                              <p>
+                                <span className="text-muted-foreground">Address:</span>{' '}
+                                <span className="text-slate-800">
+                                  {[user.address, user.township, user.city].filter(Boolean).join(', ')}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        <p className="text-[10px] text-muted-foreground mt-1">Joined {formatDate(user.created_at)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
                       <StatusBadge status={user.verification_status} type="verification" />
                       {user.verification_status === 'suspended' ? (
                         <Button size="sm" variant="outline" onClick={() => handleUnsuspend(user.id)} disabled={processing === user.id}>
@@ -106,6 +156,7 @@ export function AdminUsersPage() {
                       )}
                     </div>
                   </div>
+
                 </CardContent>
               </Card>
             </motion.div>

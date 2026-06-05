@@ -60,6 +60,7 @@ import { AdminDisputesPage } from '@/features/admin/AdminDisputesPage'
 import { AdminDepositsPage } from '@/features/admin/AdminDepositsPage'
 import { AdminAuditLogPage } from '@/features/admin/AdminAuditLogPage'
 import { AdminNotificationsPage } from '@/features/admin/AdminNotificationsPage'
+import { AdminProfilePage } from '@/features/admin/AdminProfilePage'
 
 export const router = createBrowserRouter([
   {
@@ -158,6 +159,7 @@ export const router = createBrowserRouter([
       { path: 'audit-log', element: <AdminAuditLogPage /> },
       { path: 'notifications', element: <AdminNotificationsPage /> },
       { path: 'agreements/:id', element: <AgreementFormPage /> },
+      { path: 'profile', element: <AdminProfilePage /> },
     ],
   },
 
